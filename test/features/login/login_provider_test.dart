@@ -24,5 +24,22 @@ void main() {
       final provider = LoginProvider();
       expect(provider.validateEmail('test@test.com'), isNull);
     });
+
+    test('signIn when _authService is null returns false immediately', () async {
+      final provider = LoginProvider();
+      // Do NOT call setAuthService — _authService stays null
+      final result = await provider.signIn('test@test.com', 'password');
+      expect(result, false);
+      // Should not have set isLoading or errorMessage
+      expect(provider.isLoading, false);
+      expect(provider.errorMessage, isNull);
+    });
+
+    test('signOut resets isSuperAdmin to false', () async {
+      final provider = LoginProvider();
+      // Directly call signOut without authService — should still reset state
+      await provider.signOut();
+      expect(provider.isSuperAdmin, false);
+    });
   });
 }

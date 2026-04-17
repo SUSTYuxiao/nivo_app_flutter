@@ -1,38 +1,133 @@
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nivo_app/core/models/history_item.dart';
+import 'package:nivo_app/core/services/api_service.dart';
 
 void main() {
-  group('HistoryItem.fromJson', () {
-    test('parses complete JSON', () {
-      final json = {
-        'id': '123',
-        'title': '测试会议',
-        'userId': 'user1',
-        'email': 'test@test.com',
-        'industry': '科技',
-        'outputType': '深度纪要',
-        'result': '# 会议纪要',
-        'input': '转录文本',
-        'createTime': 1713400000000,
-        'updateTime': 1713400001000,
-      };
-      final item = HistoryItem.fromJson(json);
-      expect(item.id, '123');
-      expect(item.title, '测试会议');
-      expect(item.industry, '科技');
-      expect(item.createTime, 1713400000000);
+  group('ApiService', () {
+    group('updateToken', () {
+      test('sets Authorization header when token is provided', () {
+        final service = ApiService();
+        service.updateToken('my-token');
+        expect(
+          service.dio.options.headers['Authorization'],
+          'Bearer my-token',
+        );
+      });
+
+      test('removes Authorization header when token is null', () {
+        final service = ApiService(token: 'initial');
+        expect(service.dio.options.headers['Authorization'], 'Bearer initial');
+
+        service.updateToken(null);
+        expect(service.dio.options.headers.containsKey('Authorization'), false);
+      });
     });
 
-    test('handles missing optional fields', () {
-      final json = {
-        'id': '456',
-        'userId': 'user2',
-        'createTime': 1713400000000,
-      };
-      final item = HistoryItem.fromJson(json);
-      expect(item.title, '');
-      expect(item.email, isNull);
-      expect(item.updateTime, isNull);
+    group('getHistoryList', () {
+      test('parses code==200 list response', () async {
+        final service = ApiService();
+        service.dio.httpClientAdapter = _MockAdapter(responseData: {
+          'code': 200,
+          'data': [
+            {
+              'id': '1',
+              'title': '会议A',
+              'userId': 'u1',
+              'industry': '科技',
+              'outputType': '深度纪要',
+              'result': '结果',
+              'input': '输入',
+              'createTime': 1700000000000,
+            },
+          ],
+        });
+
+        final items = await service.getHistoryList(userId: 'u1');
+        expect(items.length, 1);
+        expect(items.first.id, '1');
+        expect(items.first.title, '会议A');
+      });
+
+      test('returns empty list on non-200 code', () async {
+        final service = ApiService();
+        service.dio.httpClientAdapter = _MockAdapter(
+          responseData: {'code': 500, 'message': 'error'},
+        );
+
+        final items = await service.getHistoryList(userId: 'u1');
+        expect(items, isEmpty);
+      });
+
+      test('returns empty list when data is not a list', () async {
+        final service = ApiService();
+        service.dio.httpClientAdapter = _MockAdapter(
+          responseData: {'code': 200, 'data': 'not-a-list'},
+        );
+
+        final items = await service.getHistoryList(userId: 'u1');
+        expect(items, isEmpty);
+      });
+    });
+
+    group('chatRun', () {
+      test('returns data on success (code==200)', () async {
+        final service = ApiService();
+        service.dio.httpClientAdapter = _MockAdapter(
+          responseData: {'code': 200, 'data': '# 会议纪要内容'},
+        );
+
+        final result = await service.chatRun(
+          content: '转录文本',
+          industry: '科技',
+          outputType: '深度纪要',
+          appId: 'app1',
+          workflowId: 'wf1',
+        );
+        expect(result, '# 会议纪要内容');
+      });
+
+      test('throws on non-200 code', () async {
+        final service = ApiService();
+        service.dio.httpClientAdapter = _MockAdapter(
+          responseData: {'code': 500, 'message': 'server error'},
+        );
+
+        expect(
+          () => service.chatRun(
+            content: '转录文本',
+            industry: '科技',
+            outputType: '深度纪要',
+            appId: 'app1',
+            workflowId: 'wf1',
+          ),
+          throwsA(isA<Exception>()),
+        );
+      });
     });
   });
+}
+
+class _MockAdapter implements HttpClientAdapter {
+  final dynamic responseData;
+  final int statusCode;
+  _MockAdapter({required this.responseData, this.statusCode = 200});
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode(responseData),
+      200,
+      headers: {
+        'content-type': ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
