@@ -1,5 +1,4 @@
-# Environment
-.env
+# Environment (keep .env.local for truly secret overrides)
 .env.local
 
 # Miscellaneous
