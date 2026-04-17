@@ -49,10 +49,15 @@ lib/
 flutter pub get
 ```
 
-Supabase 配置通过编译时环境变量传入：
+Supabase 配置通过 `.env` 文件传入（参考 `.env.example`）：
 
 ```bash
-flutter run --dart-define=SUPABASE_URL=https://xxx.supabase.co --dart-define=SUPABASE_ANON_KEY=your-key
+cp .env.example .env
+# 编辑 .env 填入真实值
+```
+
+```bash
+flutter run --dart-define-from-file=.env
 ```
 
 ## 模拟器运行
@@ -67,7 +72,7 @@ flutter devices
 flutter emulators --launch <emulator_id>
 
 # 在模拟器上运行
-flutter run -d <device_id>
+flutter run --dart-define-from-file=.env -d <device_id>
 ```
 
 iOS 模拟器（仅 macOS）：
@@ -77,7 +82,7 @@ iOS 模拟器（仅 macOS）：
 open -a Simulator
 
 # 在模拟器上运行
-flutter run -d <device_id>
+flutter run --dart-define-from-file=.env -d <device_id>
 ```
 
 注意：麦克风录音功能在模拟器上不可用，需要真机测试。
@@ -88,12 +93,10 @@ Android APK：
 
 ```bash
 # Debug 包
-flutter build apk --debug
+flutter build apk --debug --dart-define-from-file=.env
 
 # Release 包
-flutter build apk --release \
-  --dart-define=SUPABASE_URL=https://xxx.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-key
+flutter build apk --release --dart-define-from-file=.env
 
 # 产物路径: build/app/outputs/flutter-apk/app-release.apk
 ```
@@ -101,9 +104,7 @@ flutter build apk --release \
 Android App Bundle（上架 Google Play）：
 
 ```bash
-flutter build appbundle --release \
-  --dart-define=SUPABASE_URL=https://xxx.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-key
+flutter build appbundle --release --dart-define-from-file=.env
 
 # 产物路径: build/app/outputs/bundle/release/app-release.aab
 ```
@@ -112,9 +113,7 @@ iOS（仅 macOS）：
 
 ```bash
 # 需要先配置签名: ios/Runner.xcworkspace → Signing & Capabilities
-flutter build ipa --release \
-  --dart-define=SUPABASE_URL=https://xxx.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-key
+flutter build ipa --release --dart-define-from-file=.env
 
 # 产物路径: build/ios/ipa/nivo_app.ipa
 # 通过 Transporter 或 xcrun altool 上传到 App Store Connect
