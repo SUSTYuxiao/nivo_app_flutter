@@ -1,0 +1,31 @@
+name: nivo_app
+description: Nivo 会议纪要 App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+  flutter: '>=3.29.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  dio: ^5.7.0
+  supabase_flutter: ^2.8.0
+  record: ^6.2.0
+  sherpa_onnx: ^1.10.40
+  flutter_markdown: ^0.7.6
+  shared_preferences: ^2.3.5
+  path_provider: ^2.1.5
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  mockito: ^5.4.4
+  build_runner: ^2.4.13
+
+flutter:
+  uses-material-design: true
