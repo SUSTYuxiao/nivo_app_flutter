@@ -79,8 +79,11 @@ flutter run --dart-define-from-file=.env
 # 指定安卓模拟器运行
 flutter run --dart-define-from-file=.env -d emulator-5554
 
-# 指定 iOS 设备运行
-flutter run --dart-define-from-file=.env -d ios
+# 指定 iOS 模拟器运行（先 open -a Simulator）
+flutter run --dart-define-from-file=.env -d <simulator_id>
+
+# 指定 iOS 真机运行（USB 连接后）
+flutter run --dart-define-from-file=.env -d <iphone_id>
 
 # 热重载（运行中按 r），热重启（按 R）
 ```
