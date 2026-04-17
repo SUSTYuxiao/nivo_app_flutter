@@ -47,7 +47,77 @@ lib/
 
 ```bash
 flutter pub get
-flutter run
+```
+
+Supabase 配置通过编译时环境变量传入：
+
+```bash
+flutter run --dart-define=SUPABASE_URL=https://xxx.supabase.co --dart-define=SUPABASE_ANON_KEY=your-key
+```
+
+## 模拟器运行
+
+Android 模拟器：
+
+```bash
+# 列出可用设备
+flutter devices
+
+# 启动 Android 模拟器（需要先在 Android Studio 中创建 AVD）
+flutter emulators --launch <emulator_id>
+
+# 在模拟器上运行
+flutter run -d <device_id>
+```
+
+iOS 模拟器（仅 macOS）：
+
+```bash
+# 打开 iOS 模拟器
+open -a Simulator
+
+# 在模拟器上运行
+flutter run -d <device_id>
+```
+
+注意：麦克风录音功能在模拟器上不可用，需要真机测试。
+
+## 构建
+
+Android APK：
+
+```bash
+# Debug 包
+flutter build apk --debug
+
+# Release 包
+flutter build apk --release \
+  --dart-define=SUPABASE_URL=https://xxx.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=your-key
+
+# 产物路径: build/app/outputs/flutter-apk/app-release.apk
+```
+
+Android App Bundle（上架 Google Play）：
+
+```bash
+flutter build appbundle --release \
+  --dart-define=SUPABASE_URL=https://xxx.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=your-key
+
+# 产物路径: build/app/outputs/bundle/release/app-release.aab
+```
+
+iOS（仅 macOS）：
+
+```bash
+# 需要先配置签名: ios/Runner.xcworkspace → Signing & Capabilities
+flutter build ipa --release \
+  --dart-define=SUPABASE_URL=https://xxx.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=your-key
+
+# 产物路径: build/ios/ipa/nivo_app.ipa
+# 通过 Transporter 或 xcrun altool 上传到 App Store Connect
 ```
 
 ## 测试
