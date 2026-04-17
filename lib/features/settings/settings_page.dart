@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
+import '../login/login_provider.dart';
 import 'settings_provider.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -67,9 +68,7 @@ class SettingsPage extends StatelessWidget {
                   child: _tileRow(
                     label: '退出登录',
                     trailing: const Icon(Icons.chevron_right, color: AppColors.neutral),
-                    onTap: () {
-                      // Will be wired to AuthService.signOut in Task 8
-                    },
+                    onTap: () => context.read<LoginProvider>().signOut(),
                   ),
                 ),
                 const SizedBox(height: 24),

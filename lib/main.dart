@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants.dart';
+import 'core/services/api_service.dart';
+import 'core/services/auth_service.dart';
+import 'core/services/audio_service.dart';
+import 'core/services/asr/cloud_asr.dart';
+import 'core/services/asr/sherpa_asr.dart';
+import 'core/services/asr/asr_router.dart';
+import 'features/login/login_provider.dart';
+import 'features/meeting/meeting_provider.dart';
+import 'features/history/history_provider.dart';
+import 'features/settings/settings_provider.dart';
 import 'app.dart';
 
 void main() async {
@@ -11,5 +22,49 @@ void main() async {
     anonKey: supabaseAnonKey,
   );
 
-  runApp(const NivoApp());
+  final settingsProvider = SettingsProvider();
+  await settingsProvider.init();
+
+  final authService = AuthService();
+  final apiService = ApiService(
+    token: Supabase.instance.client.auth.currentSession?.accessToken,
+  );
+  final audioService = AudioService();
+  final cloudAsr = CloudAsr();
+  final sherpaAsr = SherpaAsr();
+  final asrRouter = AsrRouter(
+    cloud: cloudAsr,
+    sherpa: sherpaAsr,
+    mode: settingsProvider.asrMode,
+  );
+
+  final loginProvider = LoginProvider()..setAuthService(authService);
+
+  final meetingProvider = MeetingProvider()
+    ..init(
+      audioService: audioService,
+      asrRouter: asrRouter,
+      apiService: apiService,
+    );
+
+  final historyProvider = HistoryProvider();
+  final user = authService.currentUser;
+  if (user != null) {
+    historyProvider.init(apiService: apiService, userId: user.id);
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: settingsProvider),
+        ChangeNotifierProvider.value(value: loginProvider),
+        ChangeNotifierProvider.value(value: meetingProvider),
+        ChangeNotifierProvider.value(value: historyProvider),
+      ],
+      child: NivoApp(
+        authService: authService,
+        apiService: apiService,
+      ),
+    ),
+  );
 }
