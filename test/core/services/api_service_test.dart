@@ -111,7 +111,7 @@ void main() {
 class _MockAdapter implements HttpClientAdapter {
   final dynamic responseData;
   final int statusCode;
-  _MockAdapter({required this.responseData, this.statusCode = 200});
+  _MockAdapter({required this.responseData, this.statusCode = 200}); // ignore: unused_element_parameter
 
   @override
   Future<ResponseBody> fetch(

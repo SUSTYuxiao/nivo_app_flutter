@@ -32,6 +32,8 @@ void main() async {
   final audioService = AudioService();
   final cloudAsr = CloudAsr();
   final sherpaAsr = SherpaAsr();
+  await sherpaAsr.init();
+  settingsProvider.setSherpaAsr(sherpaAsr);
   final asrRouter = AsrRouter(
     cloud: cloudAsr,
     sherpa: sherpaAsr,
