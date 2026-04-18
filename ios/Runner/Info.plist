@@ -51,6 +51,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Nivo 需要使用麦克风进行会议录音和语音转录</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Nivo 需要使用语音识别将会议录音转为文字</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

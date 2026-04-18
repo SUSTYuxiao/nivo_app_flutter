@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
@@ -50,17 +52,25 @@ class _SettingsPageState extends State<SettingsPage> {
                         label: 'ASR 模式',
                         trailing: SegmentedButton<AsrMode>(
                           segments: const [
-                            ButtonSegment(value: AsrMode.cloud, label: Text('云端')),
+                            ButtonSegment(value: AsrMode.auto, label: Text('自动')),
                             ButtonSegment(value: AsrMode.local, label: Text('本地')),
                           ],
                           selected: {settings.asrMode},
                           onSelectionChanged: (v) => settings.setAsrMode(v.first),
                         ),
                       ),
+                      if (settings.asrMode == AsrMode.auto)
+                        _tileRow(
+                          label: 'Nivo 云端转写',
+                          trailing: Switch.adaptive(
+                            value: settings.useNivoTranscription,
+                            onChanged: (v) => settings.setUseNivoTranscription(v),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                if (settings.asrMode == AsrMode.local) ...[
+                if (settings.asrMode == AsrMode.local && !Platform.isIOS) ...[
                   const SizedBox(height: 16),
                   _sectionLabel('本地模型'),
                   const SizedBox(height: 8),
@@ -69,22 +79,26 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: _modelCard(context, settings, model),
                       )),
                 ],
-                const SizedBox(height: 24),
-                _sectionLabel('云端 API'),
-                const SizedBox(height: 8),
-                _card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextField(
-                      controller: TextEditingController(text: settings.cloudApiBaseUrl),
-                      decoration: const InputDecoration(
-                        labelText: 'API Base URL',
-                        border: OutlineInputBorder(),
+                if (settings.asrMode == AsrMode.local && Platform.isIOS) ...[
+                  const SizedBox(height: 16),
+                  _card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, size: 18, color: AppColors.success),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              '使用 iOS 系统语音识别，无需下载模型',
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                            ),
+                          ),
+                        ],
                       ),
-                      onSubmitted: (v) => settings.setCloudApiBaseUrl(v),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 24),
                 _sectionLabel('账户'),
                 const SizedBox(height: 8),

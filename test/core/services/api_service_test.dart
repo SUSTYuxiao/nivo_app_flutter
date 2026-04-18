@@ -29,18 +29,23 @@ void main() {
         final service = ApiService();
         service.dio.httpClientAdapter = _MockAdapter(responseData: {
           'code': 200,
-          'data': [
-            {
-              'id': '1',
-              'title': '会议A',
-              'userId': 'u1',
-              'industry': '科技',
-              'outputType': '深度纪要',
-              'result': '结果',
-              'input': '输入',
-              'createTime': 1700000000000,
-            },
-          ],
+          'data': {
+            'list': [
+              {
+                'id': '1',
+                'title': '会议A',
+                'userId': 'u1',
+                'industry': '科技',
+                'outputType': '深度纪要',
+                'result': '结果',
+                'input': '输入',
+                'createTime': 1700000000000,
+              },
+            ],
+            'total': 1,
+            'current': 1,
+            'pageSize': 20,
+          },
         });
 
         final items = await service.getHistoryList(userId: 'u1');
@@ -81,8 +86,6 @@ void main() {
           content: '转录文本',
           industry: '科技',
           outputType: '深度纪要',
-          appId: 'app1',
-          workflowId: 'wf1',
         );
         expect(result, '# 会议纪要内容');
       });
@@ -98,8 +101,6 @@ void main() {
             content: '转录文本',
             industry: '科技',
             outputType: '深度纪要',
-            appId: 'app1',
-            workflowId: 'wf1',
           ),
           throwsA(isA<Exception>()),
         );

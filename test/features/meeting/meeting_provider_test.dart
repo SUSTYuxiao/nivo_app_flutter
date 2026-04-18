@@ -37,14 +37,24 @@ void main() {
 
     test('addTranscription multiple times grows the list', () {
       final provider = MeetingProvider();
-      provider.addTranscription('第一句');
-      provider.addTranscription('第二句');
+      provider.addTranscription('第一句', isFinal: true);
+      provider.addTranscription('第二句', isFinal: true);
       provider.addTranscription('第三句', isFinal: true);
       expect(provider.transcriptions.length, 3);
       expect(provider.transcriptions[0].text, '第一句');
       expect(provider.transcriptions[1].text, '第二句');
       expect(provider.transcriptions[2].text, '第三句');
       expect(provider.transcriptions[2].isFinal, true);
+    });
+
+    test('partial transcription updates last entry in-place', () {
+      final provider = MeetingProvider();
+      provider.addTranscription('你');
+      provider.addTranscription('你好');
+      provider.addTranscription('你好世界', isFinal: true);
+      expect(provider.transcriptions.length, 1);
+      expect(provider.transcriptions[0].text, '你好世界');
+      expect(provider.transcriptions[0].isFinal, true);
     });
 
     test('reset clears everything including elapsed', () {

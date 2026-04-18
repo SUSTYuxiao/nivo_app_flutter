@@ -97,12 +97,17 @@ class RecordingPanel extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 32),
                 child: GestureDetector(
                   onTap: () async {
+                    // Pause timer while dialog is open
+                    meeting.pauseTimer();
                     final result = await showIndustryTemplateDialog(context);
                     if (result != null && context.mounted) {
                       context.read<MeetingProvider>().endMeeting(
                             industry: result.industry,
                             template: result.template,
                           );
+                    } else {
+                      // User cancelled, resume timer
+                      meeting.resumeTimer();
                     }
                   },
                   child: Container(

@@ -10,9 +10,10 @@ class SettingsProvider extends ChangeNotifier {
   late SharedPreferences _prefs;
   SherpaAsr? _sherpaAsr;
 
-  AsrMode _asrMode = AsrMode.cloud;
+  AsrMode _asrMode = AsrMode.auto;
   String _cloudApiBaseUrl = apiBaseUrl;
   String _asrModelId = '';
+  bool _useNivoTranscription = false;
 
   double _modelDownloadProgress = 0.0;
   bool _isDownloadingModel = false;
@@ -24,6 +25,7 @@ class SettingsProvider extends ChangeNotifier {
   AsrMode get asrMode => _asrMode;
   String get cloudApiBaseUrl => _cloudApiBaseUrl;
   String get asrModelId => _asrModelId;
+  bool get useNivoTranscription => _useNivoTranscription;
   double get modelDownloadProgress => _modelDownloadProgress;
   bool get isDownloadingModel => _isDownloadingModel;
   String? get downloadingModelId => _downloadingModelId;
@@ -38,10 +40,11 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _asrMode = AsrMode.values.byName(
-      _prefs.getString('asr_mode') ?? AsrMode.cloud.name,
+      _prefs.getString('asr_mode') ?? AsrMode.auto.name,
     );
     _cloudApiBaseUrl = _prefs.getString('cloud_api_base_url') ?? apiBaseUrl;
     _asrModelId = _prefs.getString('asr_model_id') ?? '';
+    _useNivoTranscription = _prefs.getBool('use_nivo_transcription') ?? false;
   }
 
   /// Refresh download status for all known models.
@@ -98,6 +101,12 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setAsrModelId(String id) async {
     _asrModelId = id;
     await _prefs.setString('asr_model_id', id);
+    notifyListeners();
+  }
+
+  Future<void> setUseNivoTranscription(bool value) async {
+    _useNivoTranscription = value;
+    await _prefs.setBool('use_nivo_transcription', value);
     notifyListeners();
   }
 }

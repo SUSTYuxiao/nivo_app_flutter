@@ -27,18 +27,22 @@ class CloudAsr implements AsrBackend {
     );
 
     final stream = response.data!.stream.cast<List<int>>();
+    String? currentEvent;
     _sseSub = stream
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
       (line) {
-        if (line.startsWith('data:')) {
+        if (line.startsWith('event:')) {
+          currentEvent = line.substring(6).trim();
+        } else if (line.startsWith('data:')) {
           final data = line.substring(5).trim();
           if (data.isNotEmpty) {
             try {
               final json = jsonDecode(data) as Map<String, dynamic>;
               final text = json['text'] as String? ?? '';
-              final isFinal = json['isFinal'] as bool? ?? false;
+              final isFinal = currentEvent == 'final' ||
+                  (json['isFinal'] as bool? ?? false);
               if (text.isNotEmpty) {
                 onTranscription(text, isFinal);
               }
@@ -46,6 +50,7 @@ class CloudAsr implements AsrBackend {
               onTranscription(data, false);
             }
           }
+          currentEvent = null;
         }
       },
       onError: (Object e) => onError(e.toString()),

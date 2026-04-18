@@ -72,11 +72,12 @@ void main() {
       fakeSherpa = FakeSherpaAsr();
     });
 
-    test('cloud mode delegates startStream to CloudAsr', () async {
+    test('auto mode with nivo transcription delegates to CloudAsr', () async {
       final router = AsrRouter(
         cloud: fakeCloud,
         sherpa: fakeSherpa,
-        mode: AsrMode.cloud,
+        mode: AsrMode.auto,
+        useNivoTranscription: true,
       );
 
       await router.startStream(
@@ -124,7 +125,7 @@ void main() {
       final router = AsrRouter(
         cloud: fakeCloud,
         sherpa: fakeSherpa,
-        mode: AsrMode.cloud,
+        mode: AsrMode.auto,
       );
 
       await router.startStream(

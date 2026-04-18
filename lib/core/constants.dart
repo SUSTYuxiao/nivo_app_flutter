@@ -42,4 +42,4 @@ enum ScenarioType {
   const ScenarioType(this.label);
 }
 
-enum AsrMode { cloud, local }
+enum AsrMode { auto, local }

@@ -5,11 +5,11 @@ import 'package:nivo_app/core/constants.dart';
 
 void main() {
   group('SettingsProvider', () {
-    test('defaults to cloud ASR mode', () async {
+    test('defaults to auto ASR mode', () async {
       SharedPreferences.setMockInitialValues({});
       final provider = SettingsProvider();
       await provider.init();
-      expect(provider.asrMode, AsrMode.cloud);
+      expect(provider.asrMode, AsrMode.auto);
     });
 
     test('persists ASR mode change', () async {

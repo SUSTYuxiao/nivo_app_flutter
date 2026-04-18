@@ -17,7 +17,9 @@ class MeetingProvider extends ChangeNotifier {
   String? _meetingResult;
   Duration _elapsed = Duration.zero;
   Timer? _timer;
+  bool _isPaused = false;
   String? _sessionId;
+  String? _lastRecordingPath;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -27,6 +29,8 @@ class MeetingProvider extends ChangeNotifier {
   Duration get elapsed => _elapsed;
   bool get isGenerating => _isGenerating;
   String? get errorMessage => _errorMessage;
+  String? get lastRecordingPath => _lastRecordingPath;
+  bool get isPaused => _isPaused;
 
   void init({
     required AudioService audioService,
@@ -39,11 +43,20 @@ class MeetingProvider extends ChangeNotifier {
   }
 
   void addTranscription(String text, {bool isFinal = false}) {
-    _transcriptions.add(Transcription(
-      text: text,
-      timestamp: DateTime.now(),
-      isFinal: isFinal,
-    ));
+    if (_transcriptions.isNotEmpty && !_transcriptions.last.isFinal) {
+      // Last entry is partial: update in-place (partial→partial or partial→final)
+      _transcriptions[_transcriptions.length - 1] = Transcription(
+        text: text,
+        timestamp: DateTime.now(),
+        isFinal: isFinal,
+      );
+    } else {
+      _transcriptions.add(Transcription(
+        text: text,
+        timestamp: DateTime.now(),
+        isFinal: isFinal,
+      ));
+    }
     notifyListeners();
   }
 
@@ -81,6 +94,23 @@ class MeetingProvider extends ChangeNotifier {
     );
   }
 
+  void pauseTimer() {
+    _timer?.cancel();
+    _timer = null;
+    _isPaused = true;
+    notifyListeners();
+  }
+
+  void resumeTimer() {
+    if (!_isPaused) return;
+    _isPaused = false;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _elapsed += const Duration(seconds: 1);
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
   Future<void> endMeeting({
     required String industry,
     required String template,
@@ -88,7 +118,7 @@ class MeetingProvider extends ChangeNotifier {
     _timer?.cancel();
     _timer = null;
 
-    await _audioService?.stopRecording();
+    _lastRecordingPath = await _audioService?.stopRecording();
     await _asrRouter?.stopStream();
 
     _isGenerating = true;
@@ -100,8 +130,6 @@ class MeetingProvider extends ChangeNotifier {
         content: fullTranscript,
         industry: industry,
         outputType: template,
-        appId: '',
-        workflowId: '',
       );
       _meetingResult = result;
       _phase = MeetingPhase.result;
@@ -121,6 +149,8 @@ class MeetingProvider extends ChangeNotifier {
     _meetingResult = null;
     _elapsed = Duration.zero;
     _sessionId = null;
+    _lastRecordingPath = null;
+    _isPaused = false;
     _isGenerating = false;
     _errorMessage = null;
     notifyListeners();

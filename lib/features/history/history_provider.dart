@@ -1,5 +1,4 @@
-import 'package:flutter/foundation.dart';
-import '../../core/models/history_item.dart';
+import 'package:flutter/foundation.dart';import '../../core/models/history_item.dart';
 import '../../core/services/api_service.dart';
 
 class HistoryProvider extends ChangeNotifier {
@@ -67,8 +66,6 @@ class HistoryProvider extends ChangeNotifier {
         }
       }
 
-      debugPrint('[HistoryProvider] loadMore: userId=$_userId, page=$_currentPage, timeRange=$_timeRange, startTime=$startTime, endTime=$endTime');
-
       final newItems = await _apiService!.getHistoryList(
         userId: _userId!,
         current: _currentPage,
@@ -76,7 +73,6 @@ class HistoryProvider extends ChangeNotifier {
         startTime: startTime,
         endTime: endTime,
       );
-      debugPrint('[HistoryProvider] loadMore: got ${newItems.length} items');
       _items.addAll(newItems);
       _hasMore = newItems.length >= _pageSize;
       _currentPage++;

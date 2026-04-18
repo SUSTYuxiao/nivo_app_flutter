@@ -1,5 +1,6 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../constants.dart';
 import '../models/history_item.dart';
 
@@ -42,7 +43,6 @@ class ApiService {
       if (endTime != null) 'endTime': endTime,
     });
     final body = response.data;
-    debugPrint('[ApiService] getHistoryList response: $body');
     if (body is Map && (body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
       final data = body['data'] as Map;
       if (data['list'] is List) {
@@ -71,27 +71,37 @@ class ApiService {
     required String content,
     required String industry,
     required String outputType,
-    required String appId,
-    required String workflowId,
   }) async {
     final response = await _dio.post('/api/chat/run', data: {
-      'app_id': appId,
-      'workflow_id': workflowId,
+      'app_id': '',
+      'workflow_id': '',
       'parameters': {
         'Content': content,
         'Industry': industry,
         'Output_type': outputType,
-        'app_id': appId,
+        'app_id': '1',
         'audioNum': 0,
         'textNum': 0,
         'files': '',
       },
     });
     final body = response.data;
-    if (body is Map && body['code'] == 200) {
-      return body['data']?.toString() ?? '';
+    if (body is Map && (body['code'] == 200 || body['success'] == true)) {
+      final data = body['data'];
+      if (data is String) {
+        try {
+          final parsed = jsonDecode(data);
+          if (parsed is Map && parsed['data'] != null) {
+            return parsed['data'].toString();
+          }
+          return data;
+        } catch (_) {
+          return data;
+        }
+      }
+      return data?.toString() ?? '';
     }
-    throw Exception('chatRun failed: ${body['message'] ?? 'unknown error'}');
+    throw Exception('chatRun failed: ${body['message'] ?? body['error'] ?? 'unknown error'}');
   }
 
   // --- 音频数据发送 ---
