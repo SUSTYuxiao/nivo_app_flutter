@@ -100,6 +100,8 @@ class MeetingProvider extends ChangeNotifier {
       onAudioData: (pcmData) {
         _asrRouter!.sendAudio(pcmData);
       },
+      echoCancel: _voiceIsolation,
+      autoGain: _voiceIsolation,
     );
   }
 

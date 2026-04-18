@@ -36,6 +36,8 @@ class AudioService {
 
   Future<void> startRecording({
     required void Function(Uint8List pcmData) onAudioData,
+    bool echoCancel = false,
+    bool autoGain = false,
   }) async {
     if (_isRecording) return;
     final hasPerms = await _recorder.hasPermission();
@@ -47,10 +49,12 @@ class AudioService {
     _currentFilePath = '${dir.path}/recording_$timestamp.wav';
 
     final stream = await _recorder.startStream(
-      const RecordConfig(
+      RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 16000,
         numChannels: 1,
+        echoCancel: echoCancel,
+        autoGain: autoGain,
       ),
     );
 

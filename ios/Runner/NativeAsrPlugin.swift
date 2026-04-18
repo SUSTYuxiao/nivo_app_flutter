@@ -64,11 +64,12 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     private func startRecognition(onDevice: Bool, result: @escaping FlutterResult) {
         NSLog("[NativeAsr] startRecognition called, onDevice=\(onDevice)")
 
-        // Ensure audio session is configured — always set, don't skip based on category
+        // Ensure audio session is configured — unified .playAndRecord + .default
+        // Voice processing is controlled at AVAudioEngine inputNode level, not session level
         do {
             let session = AVAudioSession.sharedInstance()
-            // Default: .record + .measurement for minimal processing
-            try session.setCategory(.record, mode: .measurement)
+            try session.setCategory(.playAndRecord, mode: .default,
+                                     options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             NSLog("[NativeAsr] audio session setup error: \(error)")
@@ -213,23 +214,17 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
 
     // MARK: - FlutterStreamHandler
 
-    /// Configure audio session mode to control system voice processing.
-    /// enabled (高精度去噪 ON) = voiceChat mode, strong noise filtering
-    /// disabled (默认) = record + measurement mode, minimal processing, captures all sounds
+    /// Voice processing is now controlled at AVAudioEngine inputNode level
+    /// via record package's echoCancel/autoGain config, not at session level.
+    /// This method only ensures the session is in the correct base state.
     private func setVoiceIsolation(enabled: Bool) {
         do {
             let session = AVAudioSession.sharedInstance()
-            if enabled {
-                try session.setCategory(.playAndRecord, mode: .voiceChat,
-                                         options: [.defaultToSpeaker, .allowBluetooth])
-            } else {
-                // .record + .measurement: minimal system processing,
-                // disables AEC/AGC/noise suppression, captures raw mic input
-                // including nearby speaker audio
-                try session.setCategory(.record, mode: .measurement)
-            }
+            // Always use .playAndRecord + .default — never change category at runtime
+            try session.setCategory(.playAndRecord, mode: .default,
+                                     options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[NativeAsr] setVoiceIsolation: \(enabled), category=\(session.category.rawValue), mode=\(session.mode.rawValue)")
+            NSLog("[NativeAsr] setVoiceIsolation: \(enabled) (session unchanged, controlled via inputNode)")
         } catch {
             NSLog("[NativeAsr] setVoiceIsolation error: \(error)")
         }
