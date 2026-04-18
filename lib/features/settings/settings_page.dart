@@ -24,6 +24,10 @@ class _SettingsPageState extends State<SettingsPage> {
     // Refresh model download status when page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SettingsProvider>().refreshModelStatus();
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        context.read<VipProvider>().fetchVipStatus(user.id);
+      }
     });
   }
 
@@ -82,7 +86,16 @@ class _SettingsPageState extends State<SettingsPage> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
-                                const Text('个人信息与会员', style: TextStyle(fontSize: 12, color: Color(0xFF91918E))),
+                                Consumer<VipProvider>(
+                                  builder: (context, vip, _) {
+                                    final label = vip.isFree ? '免费用户' : (vip.productName.isNotEmpty ? vip.productName : '会员');
+                                    return Text(label, style: TextStyle(
+                                      fontSize: 12,
+                                      color: vip.isFree ? const Color(0xFF91918E) : AppColors.accent,
+                                      fontWeight: vip.isFree ? FontWeight.normal : FontWeight.w500,
+                                    ));
+                                  },
+                                ),
                               ],
                             ),
                           ),
@@ -90,6 +103,14 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _card(
+                  child: _tileRow(
+                    label: '退出登录',
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.neutral),
+                    onTap: () => context.read<LoginProvider>().signOut(),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -109,14 +130,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           onSelectionChanged: (v) => settings.setAsrMode(v.first),
                         ),
                       ),
-                      if (settings.asrMode == AsrMode.auto)
-                        _tileRow(
-                          label: 'Nivo 云端转写',
-                          trailing: Switch.adaptive(
-                            value: settings.useNivoTranscription,
-                            onChanged: (v) => settings.setUseNivoTranscription(v),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -149,16 +162,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 24),
-                _sectionLabel('账户'),
-                const SizedBox(height: 8),
-                _card(
-                  child: _tileRow(
-                    label: '退出登录',
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.neutral),
-                    onTap: () => context.read<LoginProvider>().signOut(),
-                  ),
-                ),
                 const SizedBox(height: 24),
                 _sectionLabel('关于'),
                 const SizedBox(height: 8),

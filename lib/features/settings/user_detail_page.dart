@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/constants.dart';
-import '../../core/services/api_service.dart';
+import '../../core/services/vip_provider.dart';
 import 'charge_page.dart';
 
 class UserDetailPage extends StatefulWidget {
@@ -14,46 +14,15 @@ class UserDetailPage extends StatefulWidget {
 }
 
 class _UserDetailPageState extends State<UserDetailPage> {
-  Map<String, dynamic>? _vipData;
-  bool _isLoading = true;
-
   @override
   void initState() {
     super.initState();
-    _loadVipInfo();
-  }
-
-  Future<void> _loadVipInfo() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    try {
-      final api = context.read<ApiService>();
-      final data = await api.getVipExpire(user.id);
-      if (mounted) setState(() { _vipData = data; _isLoading = false; });
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  String get _productName {
-    final type = _vipData?['productTypeCur'] ?? '';
-    switch (type) {
-      case 'vip1': return 'Pro Lite';
-      case 'vip2': return 'Pro';
-      case 'vip3': return 'Power';
-      default: return '免费用户';
-    }
-  }
-
-  bool get _isFree => _vipData?['isFree'] == true || _vipData?['productTypeCur'] == null || _vipData?['productTypeCur'] == '';
-
-  String get _expireText {
-    final expire = _vipData?['expireTimeCur'];
-    if (expire == null || _isFree) return '';
-    final expireDate = DateTime.fromMillisecondsSinceEpoch(expire is int ? expire : int.tryParse(expire.toString()) ?? 0);
-    final remaining = expireDate.difference(DateTime.now()).inDays;
-    if (remaining < 0) return '已过期';
-    return '剩余 $remaining 天 · ${expireDate.month}/${expireDate.day} 到期';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        context.read<VipProvider>().fetchVipStatus(user.id);
+      }
+    });
   }
 
   @override
@@ -66,7 +35,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 导航栏
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: Row(
@@ -79,140 +47,154 @@ class _UserDetailPageState extends State<UserDetailPage> {
                 ],
               ),
             ),
-
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator.adaptive())
-                  : ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      children: [
-                        // 头像 + 邮箱
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: AppColors.accent.withAlpha(25),
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  email.isNotEmpty ? email[0].toUpperCase() : 'U',
-                                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: AppColors.accent),
-                                ),
+              child: Consumer<VipProvider>(
+                builder: (context, vip, _) {
+                  final isFree = vip.isFree;
+                  final productName = _getProductName(vip.productType);
+                  final expireText = _getExpireText(vip);
+
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    children: [
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withAlpha(25),
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(height: 12),
-                              Text(email, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF37352F))),
-                              const SizedBox(height: 4),
-                              Text('UID: ${user?.id.substring(0, 8) ?? ''}', style: const TextStyle(fontSize: 12, color: Color(0xFF91918E))),
-                            ],
-                          ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                email.isNotEmpty ? email[0].toUpperCase() : 'U',
+                                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: AppColors.accent),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(email, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF37352F))),
+                            const SizedBox(height: 4),
+                            Text('UID: ${user?.id.substring(0, 8) ?? ''}', style: const TextStyle(fontSize: 12, color: Color(0xFF91918E))),
+                          ],
                         ),
-
-                        const SizedBox(height: 24),
-
-                        // 会员卡片
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            gradient: _isFree
-                                ? const LinearGradient(colors: [Color(0xFFF7F7F5), Color(0xFFEEEEEC)])
-                                : const LinearGradient(colors: [Color(0xFF1A1A2E), Color(0xFF16213E)]),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: _isFree ? const Color(0xFFE0E0DE) : const Color(0xFFFFD700).withAlpha(40),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      _productName,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: _isFree ? const Color(0xFF73726E) : const Color(0xFFFFD700),
-                                      ),
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: isFree
+                              ? const LinearGradient(colors: [Color(0xFFF7F7F5), Color(0xFFEEEEEC)])
+                              : const LinearGradient(colors: [Color(0xFF1A1A2E), Color(0xFF16213E)]),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isFree ? const Color(0xFFE0E0DE) : const Color(0xFFFFD700).withAlpha(40),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    productName,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isFree ? const Color(0xFF73726E) : const Color(0xFFFFD700),
                                     ),
                                   ),
-                                  const Spacer(),
-                                  if (!_isFree)
-                                    Text(_expireText, style: const TextStyle(fontSize: 12, color: Color(0xFF91918E))),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _isFree ? '升级会员，解锁更多功能' : '感谢您的支持',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: _isFree ? const Color(0xFF37352F) : Colors.white,
                                 ),
+                                const Spacer(),
+                                if (!isFree)
+                                  Text(expireText, style: const TextStyle(fontSize: 12, color: Color(0xFF91918E))),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              isFree ? '升级会员，解锁更多功能' : '感谢您的支持',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: isFree ? const Color(0xFF37352F) : Colors.white,
                               ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChargePage())),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isFree ? AppColors.accent : const Color(0xFFFFD700),
-                                    foregroundColor: _isFree ? Colors.white : Colors.black,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    elevation: 0,
-                                  ),
-                                  child: Text(_isFree ? '开通会员' : '续费 / 升级'),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChargePage())),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isFree ? AppColors.accent : const Color(0xFFFFD700),
+                                  foregroundColor: isFree ? Colors.white : Colors.black,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
                                 ),
+                                child: Text(isFree ? '开通会员' : '续费 / 升级'),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-
-                        const SizedBox(height: 32),
-
-                        // 套餐一览
-                        const Text('套餐一览', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF37352F))),
-                        const SizedBox(height: 16),
-
-                        _PlanOverviewCard(
-                          name: 'Pro Lite',
-                          price: '¥19',
-                          period: '/月',
-                          features: const ['会后整理 无限次', '实时会议 5小时/月', '基础功能'],
-                          isCurrentPlan: _vipData?['productTypeCur'] == 'vip1',
-                        ),
-                        const SizedBox(height: 12),
-                        _PlanOverviewCard(
-                          name: 'Pro',
-                          price: '¥29',
-                          period: '/月',
-                          features: const ['会后整理 无限次', '实时会议 20小时/月', '高级功能'],
-                          isHighlighted: true,
-                          isCurrentPlan: _vipData?['productTypeCur'] == 'vip2',
-                        ),
-                        const SizedBox(height: 12),
-                        _PlanOverviewCard(
-                          name: 'Power',
-                          price: '¥49',
-                          period: '/月',
-                          features: const ['会后整理 无限次', '实时会议 无限', '全部功能'],
-                          isCurrentPlan: _vipData?['productTypeCur'] == 'vip3',
-                        ),
-
-                        const SizedBox(height: 40),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text('套餐一览', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF37352F))),
+                      const SizedBox(height: 16),
+                      _PlanOverviewCard(
+                        name: 'Pro Lite',
+                        price: '¥19',
+                        period: '/月',
+                        features: const ['会后整理 无限次', '实时会议 5小时/月', '基础功能'],
+                        isCurrentPlan: vip.productType == 'vip1',
+                      ),
+                      const SizedBox(height: 12),
+                      _PlanOverviewCard(
+                        name: 'Pro',
+                        price: '¥29',
+                        period: '/月',
+                        features: const ['会后整理 无限次', '实时会议 20小时/月', '高级功能'],
+                        isHighlighted: true,
+                        isCurrentPlan: vip.productType == 'vip2',
+                      ),
+                      const SizedBox(height: 12),
+                      _PlanOverviewCard(
+                        name: 'Power',
+                        price: '¥49',
+                        period: '/月',
+                        features: const ['会后整理 无限次', '实时会议 无限', '全部功能'],
+                        isCurrentPlan: vip.productType == 'vip3',
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _getProductName(String type) {
+    switch (type) {
+      case 'vip1': return 'Pro Lite';
+      case 'vip2': return 'Pro';
+      case 'vip3': return 'Power';
+      default: return '免费用户';
+    }
+  }
+
+  String _getExpireText(VipProvider vip) {
+    final expire = vip.expireTime;
+    if (expire == null || vip.isFree) return '';
+    final expireDate = DateTime.fromMillisecondsSinceEpoch(expire * 1000);
+    final remaining = expireDate.difference(DateTime.now()).inDays;
+    if (remaining < 0) return '已过期';
+    return '剩余 $remaining 天 · ${expireDate.month}/${expireDate.day} 到期';
   }
 }
 
