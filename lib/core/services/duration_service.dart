@@ -11,6 +11,7 @@ class DurationService {
   Timer? _ticker;
   Timer? _reportTimer;
   String? _userId;
+  void Function()? _onLimitReached;
 
   int get globalUsage => _globalUsage;
   int get globalLimit => _globalLimit;
@@ -26,13 +27,17 @@ class DurationService {
     _globalLimit = data['limit'] as int? ?? 0;
   }
 
-  void startSegment() {
+  void startSegment({void Function()? onLimitReached}) {
+    _onLimitReached = onLimitReached;
     _segmentDuration = 0;
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       _segmentDuration++;
       _meetingDuration++;
       _globalUsage++;
+      if (isLimitReached) {
+        _onLimitReached?.call();
+      }
     });
 
     // 60s periodic report
@@ -47,6 +52,7 @@ class DurationService {
     _ticker = null;
     _reportTimer?.cancel();
     _reportTimer = null;
+    _onLimitReached = null;
     if (_segmentDuration > 0 && _userId != null) {
       await _apiService.reportRecordingDuration(_userId!, _segmentDuration);
     }

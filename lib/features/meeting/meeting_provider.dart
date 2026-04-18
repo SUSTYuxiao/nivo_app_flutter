@@ -105,7 +105,7 @@ class MeetingProvider extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      _durationService!.startSegment();
+      _durationService!.startSegment(onLimitReached: _onDurationLimitReached);
     }
 
     await _asrRouter!.startStream(
@@ -146,8 +146,20 @@ class MeetingProvider extends ChangeNotifier {
       notifyListeners();
     });
     if (_globalCapture && _durationService != null) {
-      _durationService!.startSegment();
+      _durationService!.startSegment(onLimitReached: _onDurationLimitReached);
     }
+    notifyListeners();
+  }
+
+  void _onDurationLimitReached() {
+    _errorMessage = '云端转写时长已用完，会议已自动停止';
+    _durationService?.stopSegment();
+    _audioService?.stopRecording();
+    _asrRouter?.stopStream();
+    _timer?.cancel();
+    _timer = null;
+    _phase = MeetingPhase.idle;
+    _restoreUseNivoTranscription();
     notifyListeners();
   }
 
