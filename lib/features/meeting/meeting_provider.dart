@@ -5,18 +5,16 @@ import '../../core/services/audio_service.dart';
 import '../../core/services/asr/asr_router.dart';
 import '../../core/services/api_service.dart';
 
-enum MeetingPhase { prepare, recording, result }
+enum MeetingPhase { idle, recording, result }
 
 class MeetingProvider extends ChangeNotifier {
   AudioService? _audioService;
   AsrRouter? _asrRouter;
   ApiService? _apiService;
 
-  MeetingPhase _phase = MeetingPhase.prepare;
+  MeetingPhase _phase = MeetingPhase.idle;
   final List<Transcription> _transcriptions = [];
   String? _meetingResult;
-  String _industry = '企业服务';
-  String _template = '深度纪要';
   Duration _elapsed = Duration.zero;
   Timer? _timer;
   String? _sessionId;
@@ -26,8 +24,6 @@ class MeetingProvider extends ChangeNotifier {
   MeetingPhase get phase => _phase;
   List<Transcription> get transcriptions => List.unmodifiable(_transcriptions);
   String? get meetingResult => _meetingResult;
-  String get industry => _industry;
-  String get template => _template;
   Duration get elapsed => _elapsed;
   bool get isGenerating => _isGenerating;
   String? get errorMessage => _errorMessage;
@@ -40,16 +36,6 @@ class MeetingProvider extends ChangeNotifier {
     _audioService = audioService;
     _asrRouter = asrRouter;
     _apiService = apiService;
-  }
-
-  void setIndustry(String value) {
-    _industry = value;
-    notifyListeners();
-  }
-
-  void setTemplate(String value) {
-    _template = value;
-    notifyListeners();
   }
 
   void addTranscription(String text, {bool isFinal = false}) {
@@ -95,7 +81,10 @@ class MeetingProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> endMeeting() async {
+  Future<void> endMeeting({
+    required String industry,
+    required String template,
+  }) async {
     _timer?.cancel();
     _timer = null;
 
@@ -109,8 +98,8 @@ class MeetingProvider extends ChangeNotifier {
       final fullTranscript = _transcriptions.map((t) => t.text).join('\n');
       final result = await _apiService!.chatRun(
         content: fullTranscript,
-        industry: _industry,
-        outputType: _template,
+        industry: industry,
+        outputType: template,
         appId: '',
         workflowId: '',
       );
@@ -127,7 +116,7 @@ class MeetingProvider extends ChangeNotifier {
   void reset() {
     _timer?.cancel();
     _timer = null;
-    _phase = MeetingPhase.prepare;
+    _phase = MeetingPhase.idle;
     _transcriptions.clear();
     _meetingResult = null;
     _elapsed = Duration.zero;

@@ -84,6 +84,7 @@ flutter run --dart-define-from-file=.env -d <simulator_id>
 
 # 指定 iOS 真机运行（USB 连接后）
 flutter run --dart-define-from-file=.env -d <iphone_id>
+flutter run --dart-define-from-file=.env -d 00008150-001615E80C20401C
 
 # 热重载（运行中按 r），热重启（按 R）
 ```

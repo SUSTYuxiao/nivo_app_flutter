@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/services/api_service.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/audio_service.dart';
 import 'core/theme.dart';
 import 'features/login/login_page.dart';
 import 'features/meeting/meeting_page.dart';
+import 'features/after_meet/after_meet_page.dart';
 import 'features/history/history_page.dart';
 import 'features/history/history_provider.dart';
 import 'features/settings/settings_page.dart';
@@ -106,12 +108,16 @@ class _MainShellState extends State<_MainShell> {
             userId: user.id,
           );
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AudioService().hasPermission();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     const pages = [
       MeetingPage(),
+      AfterMeetPage(),
       HistoryPage(),
       SettingsPage(),
     ];
@@ -130,7 +136,12 @@ class _MainShellState extends State<_MainShell> {
           NavigationDestination(
             icon: Icon(Icons.mic_none_rounded),
             selectedIcon: Icon(Icons.mic_rounded),
-            label: '会议',
+            label: '实时会议',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.edit_note_rounded),
+            selectedIcon: Icon(Icons.edit_note_rounded),
+            label: '会后整理',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_rounded),

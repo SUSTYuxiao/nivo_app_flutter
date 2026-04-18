@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants.dart';
+import '../../../shared/widgets/industry_template_dialog.dart';
 import '../meeting_provider.dart';
 
 class RecordingPanel extends StatelessWidget {
@@ -95,7 +96,15 @@ class RecordingPanel extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 32),
                 child: GestureDetector(
-                  onTap: () => meeting.endMeeting(),
+                  onTap: () async {
+                    final result = await showIndustryTemplateDialog(context);
+                    if (result != null && context.mounted) {
+                      context.read<MeetingProvider>().endMeeting(
+                            industry: result.industry,
+                            template: result.template,
+                          );
+                    }
+                  },
                   child: Container(
                     width: 200,
                     height: 50,

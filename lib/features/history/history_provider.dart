@@ -53,12 +53,30 @@ class HistoryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      int? startTime;
+      int? endTime;
+      if (_timeRange != null) {
+        final now = DateTime.now();
+        endTime = now.millisecondsSinceEpoch;
+        if (_timeRange == 'today') {
+          startTime = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+        } else if (_timeRange == '7days') {
+          startTime = now.subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+        } else if (_timeRange == '30days') {
+          startTime = now.subtract(const Duration(days: 30)).millisecondsSinceEpoch;
+        }
+      }
+
+      debugPrint('[HistoryProvider] loadMore: userId=$_userId, page=$_currentPage, timeRange=$_timeRange, startTime=$startTime, endTime=$endTime');
+
       final newItems = await _apiService!.getHistoryList(
         userId: _userId!,
-        page: _currentPage,
+        current: _currentPage,
         pageSize: _pageSize,
-        timeRange: _timeRange,
+        startTime: startTime,
+        endTime: endTime,
       );
+      debugPrint('[HistoryProvider] loadMore: got ${newItems.length} items');
       _items.addAll(newItems);
       _hasMore = newItems.length >= _pageSize;
       _currentPage++;

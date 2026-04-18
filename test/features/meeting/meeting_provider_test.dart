@@ -3,29 +3,17 @@ import 'package:nivo_app/features/meeting/meeting_provider.dart';
 
 void main() {
   group('MeetingProvider', () {
-    test('initial phase is prepare', () {
+    test('initial phase is idle', () {
       final provider = MeetingProvider();
-      expect(provider.phase, MeetingPhase.prepare);
+      expect(provider.phase, MeetingPhase.idle);
       expect(provider.transcriptions, isEmpty);
       expect(provider.meetingResult, isNull);
     });
 
-    test('setIndustry updates industry', () {
-      final provider = MeetingProvider();
-      provider.setIndustry('金融');
-      expect(provider.industry, '金融');
-    });
-
-    test('setTemplate updates template', () {
-      final provider = MeetingProvider();
-      provider.setTemplate('深度纪要');
-      expect(provider.template, '深度纪要');
-    });
-
-    test('reset returns to prepare phase', () {
+    test('reset returns to idle phase', () {
       final provider = MeetingProvider();
       provider.reset();
-      expect(provider.phase, MeetingPhase.prepare);
+      expect(provider.phase, MeetingPhase.idle);
       expect(provider.transcriptions, isEmpty);
       expect(provider.meetingResult, isNull);
       expect(provider.elapsed, Duration.zero);
@@ -39,12 +27,11 @@ void main() {
       expect(provider.transcriptions.first.isFinal, true);
     });
 
-    test('startMeeting when not initialized returns early, phase stays prepare',
+    test('startMeeting when not initialized returns early, phase stays idle',
         () async {
       final provider = MeetingProvider();
-      // Do NOT call init — services are null
       await provider.startMeeting();
-      expect(provider.phase, MeetingPhase.prepare);
+      expect(provider.phase, MeetingPhase.idle);
       expect(provider.transcriptions, isEmpty);
     });
 
@@ -62,14 +49,11 @@ void main() {
 
     test('reset clears everything including elapsed', () {
       final provider = MeetingProvider();
-      // Add some state
       provider.addTranscription('测试');
-      provider.setIndustry('金融');
-      provider.setTemplate('对话式纪要');
 
       provider.reset();
 
-      expect(provider.phase, MeetingPhase.prepare);
+      expect(provider.phase, MeetingPhase.idle);
       expect(provider.transcriptions, isEmpty);
       expect(provider.meetingResult, isNull);
       expect(provider.elapsed, Duration.zero);

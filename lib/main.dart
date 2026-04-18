@@ -11,6 +11,7 @@ import 'core/services/asr/asr_router.dart';
 import 'features/login/login_provider.dart';
 import 'features/meeting/meeting_provider.dart';
 import 'features/history/history_provider.dart';
+import 'features/after_meet/after_meet_provider.dart';
 import 'features/settings/settings_provider.dart';
 import 'app.dart';
 
@@ -55,6 +56,9 @@ void main() async {
     historyProvider.init(apiService: apiService, userId: user.id);
   }
 
+  final afterMeetProvider = AfterMeetProvider()
+    ..init(apiService: apiService);
+
   runApp(
     MultiProvider(
       providers: [
@@ -62,6 +66,7 @@ void main() async {
         ChangeNotifierProvider.value(value: loginProvider),
         ChangeNotifierProvider.value(value: meetingProvider),
         ChangeNotifierProvider.value(value: historyProvider),
+        ChangeNotifierProvider.value(value: afterMeetProvider),
       ],
       child: NivoApp(
         authService: authService,

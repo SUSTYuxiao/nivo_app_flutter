@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants.dart';
 import '../models/history_item.dart';
 
@@ -28,21 +29,27 @@ class ApiService {
 
   Future<List<HistoryItem>> getHistoryList({
     required String userId,
-    int page = 1,
+    int current = 1,
     int pageSize = 20,
-    String? timeRange,
+    int? startTime,
+    int? endTime,
   }) async {
     final response = await _dio.get('/db/getHistoryList', queryParameters: {
       'userId': userId,
-      'page': page,
+      'current': current,
       'pageSize': pageSize,
-      if (timeRange != null) 'timeRange': timeRange,
+      if (startTime != null) 'startTime': startTime,
+      if (endTime != null) 'endTime': endTime,
     });
     final body = response.data;
-    if (body is Map && body['code'] == 200 && body['data'] is List) {
-      return (body['data'] as List)
-          .map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
-          .toList();
+    debugPrint('[ApiService] getHistoryList response: $body');
+    if (body is Map && (body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
+      final data = body['data'] as Map;
+      if (data['list'] is List) {
+        return (data['list'] as List)
+            .map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
     }
     return [];
   }
