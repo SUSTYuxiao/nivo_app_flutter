@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../shared/widgets/industry_template_dialog.dart';
 import 'after_meet_provider.dart';
+import 'recordings_list_page.dart';
 
 class AfterMeetPage extends StatelessWidget {
   const AfterMeetPage({super.key});
@@ -44,46 +45,82 @@ class _IdleView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            '会后整理',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '选择文件开始会后整理',
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
-          ),
-          const SizedBox(height: 40),
-          GestureDetector(
-            onTap: () => _showInputSheet(context, provider),
-            child: Container(
-              width: 200,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                '开始整理',
+    return Stack(
+      children: [
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '会后整理',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                '选择文件开始会后整理',
+                style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
+              ),
+              const SizedBox(height: 40),
+              GestureDetector(
+                onTap: () => _showInputSheet(context, provider),
+                child: Container(
+                  width: 200,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    '开始整理',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 16,
+          right: 20,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RecordingsListPage(
+                    onSelect: (path) => provider.addLocalRecording(path),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.audio_file, size: 16, color: AppColors.accent),
+                  SizedBox(width: 6),
+                  Text('历史录音',
+                      style: TextStyle(fontSize: 13, color: AppColors.accent)),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

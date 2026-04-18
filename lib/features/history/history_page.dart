@@ -203,7 +203,7 @@ class _TimeFilterChips extends StatelessWidget {
       children: [
         for (final (value, label) in filters)
           GestureDetector(
-            onTap: () => onSelected(selected == value ? null : value),
+            onTap: () => onSelected(value),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

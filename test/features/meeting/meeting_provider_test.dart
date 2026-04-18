@@ -57,11 +57,11 @@ void main() {
       expect(provider.transcriptions[0].isFinal, true);
     });
 
-    test('reset clears everything including elapsed', () {
+    test('reset clears everything including elapsed', () async {
       final provider = MeetingProvider();
       provider.addTranscription('测试');
 
-      provider.reset();
+      await provider.reset();
 
       expect(provider.phase, MeetingPhase.idle);
       expect(provider.transcriptions, isEmpty);

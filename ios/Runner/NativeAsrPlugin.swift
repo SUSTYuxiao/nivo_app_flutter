@@ -64,15 +64,12 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     private func startRecognition(onDevice: Bool, result: @escaping FlutterResult) {
         NSLog("[NativeAsr] startRecognition called, onDevice=\(onDevice)")
 
-        // Ensure audio session is configured
+        // Ensure audio session is configured — always set, don't skip based on category
         do {
             let session = AVAudioSession.sharedInstance()
-            // Default: .default mode allows capturing speaker audio
-            if session.category != .playAndRecord {
-                try session.setCategory(.playAndRecord, mode: .default,
-                                         options: [.defaultToSpeaker, .allowBluetooth])
-                try session.setActive(true, options: .notifyOthersOnDeactivation)
-            }
+            // Default: .record + .measurement for minimal processing
+            try session.setCategory(.record, mode: .measurement)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             NSLog("[NativeAsr] audio session setup error: \(error)")
         }
@@ -217,8 +214,8 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     // MARK: - FlutterStreamHandler
 
     /// Configure audio session mode to control system voice processing.
-    /// enabled (高精度去噪 ON) = voiceChat mode, strong noise filtering, filters speaker audio
-    /// disabled (默认) = default mode + echo cancellation off, captures all sounds including speakers
+    /// enabled (高精度去噪 ON) = voiceChat mode, strong noise filtering
+    /// disabled (默认) = record + measurement mode, minimal processing, captures all sounds
     private func setVoiceIsolation(enabled: Bool) {
         do {
             let session = AVAudioSession.sharedInstance()
@@ -226,16 +223,13 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
                 try session.setCategory(.playAndRecord, mode: .voiceChat,
                                          options: [.defaultToSpeaker, .allowBluetooth])
             } else {
-                try session.setCategory(.playAndRecord, mode: .default,
-                                         options: [.defaultToSpeaker, .allowBluetooth])
-                if #available(iOS 18.2, *) {
-                    if session.isEchoCancelledInputAvailable {
-                        try session.setPrefersEchoCancelledInput(false)
-                    }
-                }
+                // .record + .measurement: minimal system processing,
+                // disables AEC/AGC/noise suppression, captures raw mic input
+                // including nearby speaker audio
+                try session.setCategory(.record, mode: .measurement)
             }
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[NativeAsr] setVoiceIsolation: \(enabled), mode=\(session.mode.rawValue)")
+            NSLog("[NativeAsr] setVoiceIsolation: \(enabled), category=\(session.category.rawValue), mode=\(session.mode.rawValue)")
         } catch {
             NSLog("[NativeAsr] setVoiceIsolation error: \(error)")
         }

@@ -80,6 +80,11 @@ class MeetingProvider extends ChangeNotifier {
       notifyListeners();
     });
 
+    // Apply voice isolation setting before starting ASR and recording
+    if (Platform.isIOS) {
+      await IosAsr.setVoiceIsolation(_voiceIsolation);
+    }
+
     await _asrRouter!.startStream(
       sessionId: _sessionId!,
       onTranscription: (text, isFinal) {
@@ -153,9 +158,11 @@ class MeetingProvider extends ChangeNotifier {
     }
   }
 
-  void reset() {
+  Future<void> reset() async {
     _timer?.cancel();
     _timer = null;
+    await _audioService?.stopRecording();
+    await _asrRouter?.stopStream();
     _phase = MeetingPhase.idle;
     _transcriptions.clear();
     _meetingResult = null;

@@ -9,7 +9,7 @@ class HistoryProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _hasMore = true;
   int _currentPage = 1;
-  String? _timeRange;
+  String? _timeRange = '7days';
   static const _pageSize = 20;
 
   List<HistoryItem> get items => List.unmodifiable(_items);
