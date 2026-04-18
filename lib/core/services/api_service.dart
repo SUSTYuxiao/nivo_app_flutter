@@ -105,4 +105,15 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+
+  // --- 会员信息 ---
+
+  Future<Map<String, dynamic>> getVipExpire(String userId) async {
+    final response = await _dio.post('/api/pay/getVipExpire', data: {'userId': userId});
+    final body = response.data;
+    if (body is Map && (body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
+      return body['data'] as Map<String, dynamic>;
+    }
+    return {};
+  }
 }

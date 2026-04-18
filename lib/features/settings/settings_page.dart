@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants.dart';
 import '../../core/services/asr/asr_models.dart';
 import '../login/login_provider.dart';
 import 'settings_provider.dart';
+import 'user_detail_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -40,6 +42,53 @@ class _SettingsPageState extends State<SettingsPage> {
                     fontSize: 32,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // 个人信息入口
+                _card(
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserDetailPage())),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withAlpha(25),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Builder(builder: (_) {
+                              final email = Supabase.instance.client.auth.currentUser?.email ?? '';
+                              return Text(
+                                email.isNotEmpty ? email[0].toUpperCase() : 'U',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.accent),
+                              );
+                            }),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  Supabase.instance.client.auth.currentUser?.email ?? '',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('个人信息与会员', style: TextStyle(fontSize: 12, color: Color(0xFF91918E))),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: AppColors.neutral, size: 20),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

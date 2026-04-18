@@ -64,6 +64,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        Provider<ApiService>.value(value: apiService),
         ChangeNotifierProvider.value(value: settingsProvider),
         ChangeNotifierProvider.value(value: loginProvider),
         ChangeNotifierProvider.value(value: meetingProvider),
