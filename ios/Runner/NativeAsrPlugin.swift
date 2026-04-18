@@ -52,6 +52,10 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
             } else {
                 result(FlutterError(code: "INVALID_ARGS", message: "缺少 filePath 参数", details: nil))
             }
+        case "setVoiceIsolation":
+            let enabled = call.arguments as? Bool ?? false
+            setVoiceIsolation(enabled: enabled)
+            result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -198,6 +202,30 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     }
 
     // MARK: - FlutterStreamHandler
+
+    /// Configure audio session mode to control system voice processing.
+    /// Note: iOS Voice Isolation is a system-level Control Center feature and cannot
+    /// be toggled programmatically. This controls AVAudioSession mode instead.
+    /// enabled = voiceChat mode (system voice processing, echo cancellation)
+    /// disabled = measurement mode (raw audio, captures all sounds including speakers)
+    private func setVoiceIsolation(enabled: Bool) {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            if enabled {
+                try session.setCategory(.playAndRecord, mode: .voiceChat,
+                                         options: [.defaultToSpeaker, .allowBluetooth])
+            } else {
+                try session.setCategory(.playAndRecord, mode: .measurement,
+                                         options: [.defaultToSpeaker, .allowBluetooth])
+            }
+            try session.setActive(true)
+            NSLog("[NativeAsr] setVoiceIsolation: \(enabled), mode=\(session.mode.rawValue)")
+        } catch {
+            NSLog("[NativeAsr] setVoiceIsolation error: \(error)")
+        }
+    }
+
+    // MARK: - FlutterStreamHandler (EventChannel)
 
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         NSLog("[NativeAsr] eventSink connected")

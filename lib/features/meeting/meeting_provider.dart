@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../core/models/transcription.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/asr/asr_router.dart';
+import '../../core/services/asr/ios_asr.dart';
 import '../../core/services/api_service.dart';
 
 enum MeetingPhase { idle, recording, result }
@@ -18,6 +20,7 @@ class MeetingProvider extends ChangeNotifier {
   Duration _elapsed = Duration.zero;
   Timer? _timer;
   bool _isPaused = false;
+  bool _voiceIsolation = false;
   String? _sessionId;
   String? _lastRecordingPath;
   bool _isGenerating = false;
@@ -31,6 +34,7 @@ class MeetingProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get lastRecordingPath => _lastRecordingPath;
   bool get isPaused => _isPaused;
+  bool get voiceIsolation => _voiceIsolation;
 
   void init({
     required AudioService audioService,
@@ -108,6 +112,14 @@ class MeetingProvider extends ChangeNotifier {
       _elapsed += const Duration(seconds: 1);
       notifyListeners();
     });
+    notifyListeners();
+  }
+
+  Future<void> setVoiceIsolation(bool enabled) async {
+    _voiceIsolation = enabled;
+    if (Platform.isIOS) {
+      await IosAsr.setVoiceIsolation(enabled);
+    }
     notifyListeners();
   }
 

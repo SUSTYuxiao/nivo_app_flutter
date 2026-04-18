@@ -90,6 +90,20 @@ void main() {
         expect(result, '# 会议纪要内容');
       });
 
+      test('returns data on success (code==0, Coze format)', () async {
+        final service = ApiService();
+        service.dio.httpClientAdapter = _MockAdapter(
+          responseData: {'code': 0, 'msg': 'Success', 'data': '{"data": "纪要内容"}'},
+        );
+
+        final result = await service.chatRun(
+          content: '转录文本',
+          industry: '科技',
+          outputType: '深度纪要',
+        );
+        expect(result, '纪要内容');
+      });
+
       test('throws on non-200 code', () async {
         final service = ApiService();
         service.dio.httpClientAdapter = _MockAdapter(

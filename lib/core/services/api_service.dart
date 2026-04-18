@@ -86,7 +86,7 @@ class ApiService {
       },
     });
     final body = response.data;
-    if (body is Map && (body['code'] == 200 || body['success'] == true)) {
+    if (body is Map && (body['code'] == 0 || body['code'] == 200 || body['success'] == true)) {
       final data = body['data'];
       if (data is String) {
         try {
@@ -101,7 +101,7 @@ class ApiService {
       }
       return data?.toString() ?? '';
     }
-    throw Exception('chatRun failed: ${body['message'] ?? body['error'] ?? 'unknown error'}');
+    throw Exception('chatRun failed: ${body['message'] ?? body['msg'] ?? body['error'] ?? 'unknown error'}');
   }
 
   // --- 音频数据发送 ---
