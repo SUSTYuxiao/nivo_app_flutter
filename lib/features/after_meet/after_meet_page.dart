@@ -1,9 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../shared/widgets/industry_template_dialog.dart';
+import '../../shared/widgets/nivo_button.dart';
 import 'after_meet_provider.dart';
 import 'recordings_list_page.dart';
 
@@ -65,25 +67,10 @@ class _IdleView extends StatelessWidget {
                 style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
               ),
               const SizedBox(height: 40),
-              GestureDetector(
+              NivoButton(
+                label: '开始整理',
+                width: 200,
                 onTap: () => _showInputSheet(context, provider),
-                child: Container(
-                  width: 200,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    '开始整理',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -304,9 +291,11 @@ class _InputSheetState extends State<_InputSheet> {
                               const Icon(Icons.check_circle, size: 16, color: AppColors.accent),
                               const SizedBox(width: 10),
                               Expanded(child: Text(fileName, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
-                              GestureDetector(
-                                onTap: () => provider.removeAudioFile(entry.key),
-                                child: const Icon(Icons.close, size: 16, color: AppColors.neutral),
+                              IconButton(
+                                onPressed: () => provider.removeAudioFile(entry.key),
+                                icon: const Icon(Icons.close, size: 16, color: AppColors.neutral),
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
                               ),
                             ],
                           ),
@@ -352,9 +341,11 @@ class _InputSheetState extends State<_InputSheet> {
                                     ],
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: () => _confirmDelete(provider, file.path, name),
-                                  child: const Icon(Icons.delete_outline, size: 16, color: AppColors.neutral),
+                                IconButton(
+                                  onPressed: () => _confirmDelete(provider, file.path, name),
+                                  icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.neutral),
+                                  constraints: const BoxConstraints(),
+                                  padding: EdgeInsets.zero,
                                 ),
                               ],
                             ),
@@ -364,20 +355,16 @@ class _InputSheetState extends State<_InputSheet> {
                       const SizedBox(height: 8),
                     ],
                     // Pick from files
-                    GestureDetector(
-                      onTap: provider.pickAudioFile,
-                      child: Container(
+                    SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton(
+                        onPressed: provider.pickAudioFile,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.folder_open, size: 16, color: AppColors.accent),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text('从文件选择', style: TextStyle(fontSize: 13, color: AppColors.accent)),
                           ],
                         ),
@@ -395,8 +382,9 @@ class _InputSheetState extends State<_InputSheet> {
                 ),
               SizedBox(
                 width: double.infinity,
-                child: GestureDetector(
-                  onTap: () async {
+                height: 48,
+                child: CupertinoButton(
+                  onPressed: () async {
                     final result = await showIndustryTemplateDialog(context);
                     if (result != null && context.mounted) {
                       Navigator.pop(context); // close sheet
@@ -406,16 +394,11 @@ class _InputSheetState extends State<_InputSheet> {
                       );
                     }
                   },
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text('提交整理',
-                        style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                  ),
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(24),
+                  padding: EdgeInsets.zero,
+                  child: const Text('提交整理',
+                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],

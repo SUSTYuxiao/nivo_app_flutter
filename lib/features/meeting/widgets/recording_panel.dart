@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants.dart';
@@ -32,44 +33,29 @@ Future<_EndAction?> _showEndMeetingDialog(BuildContext context) {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context, _EndAction.submit),
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                alignment: Alignment.center,
-                child: const Text('生成会议纪要',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
+            child: CupertinoButton(
+              onPressed: () => Navigator.pop(context, _EndAction.submit),
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(24),
+              child: const Text('生成会议纪要',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context, _EndAction.discard),
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                alignment: Alignment.center,
-                child: const Text('放弃总结',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-              ),
+            child: CupertinoButton(
+              onPressed: () => Navigator.pop(context, _EndAction.discard),
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(24),
+              child: const Text('放弃总结',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87)),
             ),
           ),
           const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => Navigator.pop(context, _EndAction.cancel),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('继续录音', style: TextStyle(fontSize: 14, color: AppColors.neutral)),
-            ),
+          CupertinoButton(
+            onPressed: () => Navigator.pop(context, _EndAction.cancel),
+            child: const Text('继续录音', style: TextStyle(fontSize: 14, color: AppColors.neutral)),
           ),
         ],
       ),
@@ -172,14 +158,15 @@ class RecordingPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Pause / Resume button
-                    GestureDetector(
-                      onTap: () {
+                    CupertinoButton(
+                      onPressed: () {
                         if (meeting.isPaused) {
                           meeting.resumeTimer();
                         } else {
                           meeting.pauseTimer();
                         }
                       },
+                      padding: EdgeInsets.zero,
                       child: Container(
                         width: 50,
                         height: 50,
@@ -197,8 +184,9 @@ class RecordingPanel extends StatelessWidget {
                     ),
                     const SizedBox(width: 20),
                     // End meeting button
-                    GestureDetector(
-                      onTap: () async {
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
                         meeting.pauseTimer();
                         final action = await _showEndMeetingDialog(context);
                         if (!context.mounted) return;

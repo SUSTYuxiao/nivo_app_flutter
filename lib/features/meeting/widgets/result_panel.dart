@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants.dart';
+import '../../../shared/widgets/nivo_button.dart';
 import '../meeting_provider.dart';
 
 class ResultPanel extends StatelessWidget {
@@ -42,24 +42,10 @@ class ResultPanel extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Center(
-                child: GestureDetector(
+                child: NivoButton(
+                  label: '返回',
+                  width: 200,
                   onTap: () => meeting.reset(),
-                  child: Container(
-                    width: 200,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '返回',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 32),

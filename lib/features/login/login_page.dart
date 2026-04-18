@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
@@ -115,27 +116,16 @@ class _LoginPageState extends State<LoginPage> {
                             style: const TextStyle(color: AppColors.recording),
                           ),
                         ),
-                      GestureDetector(
-                        onTap: provider.isLoading ? null : _handleLogin,
-                        child: Container(
-                          width: double.infinity,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: provider.isLoading
-                                ? AppColors.accent.withAlpha(128)
-                                : AppColors.accent,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          alignment: Alignment.center,
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: CupertinoButton(
+                          onPressed: provider.isLoading ? null : _handleLogin,
+                          color: AppColors.accent,
+                          borderRadius: BorderRadius.circular(25),
+                          padding: EdgeInsets.zero,
                           child: provider.isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator.adaptive(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                                  ),
-                                )
+                              ? const CupertinoActivityIndicator(color: Colors.white)
                               : const Text(
                                   '登录',
                                   style: TextStyle(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants.dart';
+import '../../shared/widgets/nivo_button.dart';
 import 'meeting_provider.dart';
 import 'widgets/recording_panel.dart';
 import 'widgets/result_panel.dart';
@@ -82,25 +82,10 @@ class _IdleView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              GestureDetector(
+              NivoButton(
+                label: '发起会议',
+                width: 200,
                 onTap: onStart,
-                child: Container(
-                  width: 200,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    '发起会议',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),

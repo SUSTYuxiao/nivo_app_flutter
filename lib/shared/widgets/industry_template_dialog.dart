@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
 
@@ -113,17 +114,12 @@ class _DialogContentState extends State<_DialogContent> {
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context, IndustryTemplateResult(industry: _industry, template: _template)),
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                alignment: Alignment.center,
-                child: const Text('确认', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
+            height: 50,
+            child: CupertinoButton(
+              onPressed: () => Navigator.pop(context, IndustryTemplateResult(industry: _industry, template: _template)),
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(25),
+              child: const Text('确认', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),
           ),
         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants.dart';
+import '../../shared/widgets/skeleton.dart';
 import 'history_provider.dart';
 import 'history_detail_page.dart';
 
@@ -73,7 +74,17 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                   ),
-                  if (history.items.isEmpty && !history.isLoading)
+                  if (history.items.isEmpty && history.isLoading)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (_, __) => const SkeletonHistoryCard(),
+                          childCount: 5,
+                        ),
+                      ),
+                    )
+                  else if (history.items.isEmpty && !history.isLoading)
                     SliverFillRemaining(
                       child: Center(
                         child: Text(
