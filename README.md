@@ -137,6 +137,9 @@ adb connect <手机IP>:5555
 adb install build/app/outputs/flutter-apk/app-release.apk
 ```
 
+### ios
+flutter run --release --dart-define-from-file=.env -d 00008150-001615E80C20401C
+
 ## 测试
 
 ```bash
