@@ -6,9 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:record/record.dart';
 import 'core/services/api_service.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/vip_provider.dart';
 import 'core/theme.dart';
 import 'features/login/login_page.dart';
 import 'features/meeting/meeting_page.dart';
+import 'features/meeting/meeting_provider.dart';
 import 'features/after_meet/after_meet_page.dart';
 import 'features/history/history_page.dart';
 import 'features/history/history_provider.dart';
@@ -85,6 +87,8 @@ class _AuthGateState extends State<_AuthGate> {
                 apiService: widget.apiService,
                 userId: user.id,
               );
+          context.read<MeetingProvider>().setUserId(user.id);
+          context.read<VipProvider>().fetchVipStatus(user.id);
         }
         setState(() {});
       },

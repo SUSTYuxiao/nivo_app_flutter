@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/vip_provider.dart';
 import '../../shared/widgets/nivo_button.dart';
+import '../settings/charge_page.dart';
 import 'meeting_provider.dart';
 import 'widgets/recording_panel.dart';
 import 'widgets/result_panel.dart';
@@ -34,6 +36,7 @@ class _IdleView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<MeetingProvider>(
       builder: (context, meeting, _) {
+        final vip = context.watch<VipProvider>();
         return Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -66,16 +69,42 @@ class _IdleView extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('高精度去噪',
+                            const Text('全局收音',
                                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                            Text('过滤杂音，包括其他设备扬声器声音',
+                            Text('对外部扬声器做转写，适用线上会议',
                                 style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                           ],
                         ),
                       ),
                       Switch.adaptive(
-                        value: meeting.voiceIsolation,
-                        onChanged: (v) => meeting.setVoiceIsolation(v),
+                        value: meeting.globalCapture,
+                        onChanged: (v) {
+                          if (v && !vip.isVip) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('会员功能'),
+                                content: const Text('全局收音为会员功能，需至少 Pro Lite 会员'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('取消'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      Navigator.push(context,
+                                          MaterialPageRoute(builder: (_) => const ChargePage()));
+                                    },
+                                    child: const Text('去开通'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+                          meeting.setGlobalCapture(v);
+                        },
                       ),
                     ],
                   ),

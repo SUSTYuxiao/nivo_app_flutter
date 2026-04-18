@@ -106,10 +106,30 @@ class ApiService {
 
   Dio get dio => _dio;
 
+  // --- 云端转写时长 ---
+
+  Future<Map<String, dynamic>> getRecordingDurationConfig(String userId) async {
+    final response = await _dio.get('/api/recording-duration/config',
+        queryParameters: {'userId': userId});
+    final body = response.data;
+    if (body is Map &&
+        (body['code'] == 200 || body['success'] == true) &&
+        body['data'] is Map) {
+      return body['data'] as Map<String, dynamic>;
+    }
+    return {};
+  }
+
+  Future<void> reportRecordingDuration(String userId, int duration) async {
+    await _dio.post('/api/recording-duration/report',
+        queryParameters: {'userId': userId, 'duration': duration});
+  }
+
   // --- 会员信息 ---
 
   Future<Map<String, dynamic>> getVipExpire(String userId) async {
-    final response = await _dio.post('/api/pay/getVipExpire', data: {'userId': userId});
+    final response = await _dio.post('/api/pay/getVipExpire',
+        data: FormData.fromMap({'userId': userId}));
     final body = response.data;
     if (body is Map && (body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
       return body['data'] as Map<String, dynamic>;

@@ -86,13 +86,4 @@ class IosAsr implements AsrBackend {
     });
     return result ?? '';
   }
-
-  /// Set microphone voice isolation mode.
-  /// true = Voice Isolation (filter noise including speakers)
-  /// false = Wide Spectrum (capture all sounds)
-  static Future<void> setVoiceIsolation(bool enabled) async {
-    try {
-      await _methodChannel.invokeMethod('setVoiceIsolation', enabled);
-    } catch (_) {}
-  }
 }

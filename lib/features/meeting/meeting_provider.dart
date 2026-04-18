@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../core/models/transcription.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/asr/asr_router.dart';
-import '../../core/services/asr/ios_asr.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/duration_service.dart';
 
 enum MeetingPhase { idle, recording, result }
 
@@ -13,6 +12,7 @@ class MeetingProvider extends ChangeNotifier {
   AudioService? _audioService;
   AsrRouter? _asrRouter;
   ApiService? _apiService;
+  DurationService? _durationService;
 
   MeetingPhase _phase = MeetingPhase.idle;
   final List<Transcription> _transcriptions = [];
@@ -20,11 +20,14 @@ class MeetingProvider extends ChangeNotifier {
   Duration _elapsed = Duration.zero;
   Timer? _timer;
   bool _isPaused = false;
-  bool _voiceIsolation = false;
+  bool _globalCapture = false;
   String? _sessionId;
   String? _lastRecordingPath;
   bool _isGenerating = false;
   String? _errorMessage;
+  String? _userId;
+  /// Saved value to restore after meeting ends
+  bool? _savedUseNivoTranscription;
 
   MeetingPhase get phase => _phase;
   List<Transcription> get transcriptions => List.unmodifiable(_transcriptions);
@@ -34,21 +37,26 @@ class MeetingProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get lastRecordingPath => _lastRecordingPath;
   bool get isPaused => _isPaused;
-  bool get voiceIsolation => _voiceIsolation;
+  bool get globalCapture => _globalCapture;
 
   void init({
     required AudioService audioService,
     required AsrRouter asrRouter,
     required ApiService apiService,
+    DurationService? durationService,
   }) {
     _audioService = audioService;
     _asrRouter = asrRouter;
     _apiService = apiService;
+    _durationService = durationService;
+  }
+
+  void setUserId(String userId) {
+    _userId = userId;
   }
 
   void addTranscription(String text, {bool isFinal = false}) {
     if (_transcriptions.isNotEmpty && !_transcriptions.last.isFinal) {
-      // Last entry is partial: update in-place (partial→partial or partial→final)
       _transcriptions[_transcriptions.length - 1] = Transcription(
         text: text,
         timestamp: DateTime.now(),
@@ -66,6 +74,10 @@ class MeetingProvider extends ChangeNotifier {
 
   Future<void> startMeeting() async {
     if (_audioService == null || _asrRouter == null) return;
+    if (_phase == MeetingPhase.recording) return; // guard against double start
+
+    // Save current useNivoTranscription to restore after meeting
+    _savedUseNivoTranscription = _asrRouter!.useNivoTranscription;
 
     _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
     _phase = MeetingPhase.recording;
@@ -75,14 +87,25 @@ class MeetingProvider extends ChangeNotifier {
     _elapsed = Duration.zero;
     notifyListeners();
 
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _elapsed += const Duration(seconds: 1);
       notifyListeners();
     });
 
-    // Apply voice isolation setting before starting ASR and recording
-    if (Platform.isIOS) {
-      await IosAsr.setVoiceIsolation(_voiceIsolation);
+    // Global capture: fetch duration config and start segment timing
+    if (_globalCapture && _durationService != null && _userId != null) {
+      await _durationService!.fetchConfig(_userId!);
+      if (_durationService!.isLimitReached) {
+        _errorMessage = '云端转写时长已用完，请升级套餐';
+        _timer?.cancel();
+        _timer = null;
+        _phase = MeetingPhase.idle;
+        _restoreUseNivoTranscription();
+        notifyListeners();
+        return;
+      }
+      _durationService!.startSegment();
     }
 
     await _asrRouter!.startStream(
@@ -100,15 +123,18 @@ class MeetingProvider extends ChangeNotifier {
       onAudioData: (pcmData) {
         _asrRouter!.sendAudio(pcmData);
       },
-      echoCancel: _voiceIsolation,
-      autoGain: _voiceIsolation,
+      echoCancel: false,
+      autoGain: false,
     );
   }
 
-  void pauseTimer() {
+  Future<void> pauseTimer() async {
     _timer?.cancel();
     _timer = null;
     _isPaused = true;
+    if (_globalCapture && _durationService != null) {
+      await _durationService!.stopSegment();
+    }
     notifyListeners();
   }
 
@@ -119,14 +145,15 @@ class MeetingProvider extends ChangeNotifier {
       _elapsed += const Duration(seconds: 1);
       notifyListeners();
     });
+    if (_globalCapture && _durationService != null) {
+      _durationService!.startSegment();
+    }
     notifyListeners();
   }
 
-  Future<void> setVoiceIsolation(bool enabled) async {
-    _voiceIsolation = enabled;
-    if (Platform.isIOS) {
-      await IosAsr.setVoiceIsolation(enabled);
-    }
+  void setGlobalCapture(bool enabled) {
+    _globalCapture = enabled;
+    _asrRouter?.useNivoTranscription = enabled;
     notifyListeners();
   }
 
@@ -136,6 +163,10 @@ class MeetingProvider extends ChangeNotifier {
   }) async {
     _timer?.cancel();
     _timer = null;
+
+    if (_globalCapture && _durationService != null) {
+      await _durationService!.endMeeting();
+    }
 
     _lastRecordingPath = await _audioService?.stopRecording();
     await _asrRouter?.stopStream();
@@ -156,6 +187,7 @@ class MeetingProvider extends ChangeNotifier {
       _errorMessage = '纪要生成失败: $e';
     } finally {
       _isGenerating = false;
+      _restoreUseNivoTranscription();
       notifyListeners();
     }
   }
@@ -163,6 +195,9 @@ class MeetingProvider extends ChangeNotifier {
   Future<void> reset() async {
     _timer?.cancel();
     _timer = null;
+    if (_globalCapture && _durationService != null) {
+      await _durationService!.endMeeting();
+    }
     await _audioService?.stopRecording();
     await _asrRouter?.stopStream();
     _phase = MeetingPhase.idle;
@@ -172,14 +207,24 @@ class MeetingProvider extends ChangeNotifier {
     _sessionId = null;
     _lastRecordingPath = null;
     _isPaused = false;
+    _globalCapture = false;
     _isGenerating = false;
     _errorMessage = null;
+    _restoreUseNivoTranscription();
     notifyListeners();
+  }
+
+  void _restoreUseNivoTranscription() {
+    if (_savedUseNivoTranscription != null) {
+      _asrRouter?.useNivoTranscription = _savedUseNivoTranscription!;
+      _savedUseNivoTranscription = null;
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _durationService?.dispose();
     super.dispose();
   }
 }

@@ -5,6 +5,8 @@ import 'core/constants.dart';
 import 'core/services/api_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/audio_service.dart';
+import 'core/services/vip_provider.dart';
+import 'core/services/duration_service.dart';
 import 'core/services/asr/cloud_asr.dart';
 import 'core/services/asr/sherpa_asr.dart';
 import 'core/services/asr/asr_router.dart';
@@ -43,6 +45,10 @@ void main() async {
   );
   settingsProvider.setAsrRouter(asrRouter);
 
+  final durationService = DurationService(apiService: apiService);
+
+  final vipProvider = VipProvider()..init(apiService);
+
   final loginProvider = LoginProvider()..setAuthService(authService);
 
   final meetingProvider = MeetingProvider()
@@ -50,12 +56,15 @@ void main() async {
       audioService: audioService,
       asrRouter: asrRouter,
       apiService: apiService,
+      durationService: durationService,
     );
 
   final historyProvider = HistoryProvider();
   final user = authService.currentUser;
   if (user != null) {
     historyProvider.init(apiService: apiService, userId: user.id);
+    meetingProvider.setUserId(user.id);
+    vipProvider.fetchVipStatus(user.id);
   }
 
   final afterMeetProvider = AfterMeetProvider()
@@ -66,6 +75,7 @@ void main() async {
       providers: [
         Provider<ApiService>.value(value: apiService),
         ChangeNotifierProvider.value(value: settingsProvider),
+        ChangeNotifierProvider.value(value: vipProvider),
         ChangeNotifierProvider.value(value: loginProvider),
         ChangeNotifierProvider.value(value: meetingProvider),
         ChangeNotifierProvider.value(value: historyProvider),

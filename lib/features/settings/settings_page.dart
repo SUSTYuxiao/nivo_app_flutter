@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants.dart';
 import '../../core/services/asr/asr_models.dart';
+import '../../core/services/vip_provider.dart';
 import '../login/login_provider.dart';
 import 'settings_provider.dart';
 import 'user_detail_page.dart';
@@ -163,6 +164,32 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 8),
                 _card(
                   child: _tileRow(label: '版本', trailing: const Text('1.0.0')),
+                ),
+                const SizedBox(height: 24),
+                _sectionLabel('开发者'),
+                const SizedBox(height: 8),
+                _card(
+                  child: Column(
+                    children: [
+                      _tileRow(
+                        label: '开发者模式',
+                        trailing: Switch.adaptive(
+                          value: settings.devMode,
+                          onChanged: (v) => settings.setDevMode(v),
+                        ),
+                      ),
+                      if (settings.devMode)
+                        _tileRow(
+                          label: '模拟非会员',
+                          trailing: Consumer<VipProvider>(
+                            builder: (context, vip, _) => Switch.adaptive(
+                              value: vip.devModeSimulateFree,
+                              onChanged: (v) => vip.setDevModeSimulateFree(v),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 32),
               ],

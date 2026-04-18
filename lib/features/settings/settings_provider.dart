@@ -16,6 +16,7 @@ class SettingsProvider extends ChangeNotifier {
   String _cloudApiBaseUrl = apiBaseUrl;
   String _asrModelId = '';
   bool _useNivoTranscription = false;
+  bool _devMode = false;
 
   double _modelDownloadProgress = 0.0;
   bool _isDownloadingModel = false;
@@ -28,6 +29,7 @@ class SettingsProvider extends ChangeNotifier {
   String get cloudApiBaseUrl => _cloudApiBaseUrl;
   String get asrModelId => _asrModelId;
   bool get useNivoTranscription => _useNivoTranscription;
+  bool get devMode => _devMode;
   double get modelDownloadProgress => _modelDownloadProgress;
   bool get isDownloadingModel => _isDownloadingModel;
   String? get downloadingModelId => _downloadingModelId;
@@ -51,6 +53,7 @@ class SettingsProvider extends ChangeNotifier {
     _cloudApiBaseUrl = _prefs.getString('cloud_api_base_url') ?? apiBaseUrl;
     _asrModelId = _prefs.getString('asr_model_id') ?? '';
     _useNivoTranscription = _prefs.getBool('use_nivo_transcription') ?? false;
+    _devMode = _prefs.getBool('dev_mode') ?? false;
   }
 
   /// Refresh download status for all known models.
@@ -115,6 +118,12 @@ class SettingsProvider extends ChangeNotifier {
     _useNivoTranscription = value;
     _asrRouter?.useNivoTranscription = value;
     await _prefs.setBool('use_nivo_transcription', value);
+    notifyListeners();
+  }
+
+  Future<void> setDevMode(bool value) async {
+    _devMode = value;
+    await _prefs.setBool('dev_mode', value);
     notifyListeners();
   }
 }
