@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants.dart';
 import '../../../shared/widgets/industry_template_dialog.dart';
+import '../../../shared/widgets/processing_view.dart';
 import '../meeting_provider.dart';
 
 enum _EndAction { submit, discard, cancel }
@@ -141,14 +142,13 @@ class RecordingPanel extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             if (meeting.isGenerating)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 32),
-                child: Column(
-                  children: [
-                    CircularProgressIndicator.adaptive(),
-                    SizedBox(height: 8),
-                    Text('正在生成纪要...'),
-                  ],
+              Padding(
+                padding: const EdgeInsets.only(bottom: 32),
+                child: ProcessingView(
+                  progress: 0,
+                  status: meeting.generatingStatus.isNotEmpty
+                      ? meeting.generatingStatus
+                      : '正在生成纪要...',
                 ),
               )
             else

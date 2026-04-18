@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants.dart';
 import '../models/history_item.dart';
 
@@ -105,6 +106,55 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+
+  // --- OSS ---
+
+  Future<Map<String, dynamic>> getStsToken() async {
+    // Web端不带auth调用此接口，用独立dio避免Bearer token干扰
+    final plainDio = Dio(BaseOptions(baseUrl: apiBaseUrl));
+    final response = await plainDio.get('/oss/getStsToken');
+    final body = response.data;
+    debugPrint('[ApiService] getStsToken response type: ${body.runtimeType}');
+    if (body is Map) {
+      // Format 1: {code: 200, data: {region, bucket, ...}}
+      if ((body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
+        return body['data'] as Map<String, dynamic>;
+      }
+      // Format 2: direct {region, bucket, accessKeyId, ...}
+      if (body.containsKey('accessKeyId') || body.containsKey('AccessKeyId')) {
+        return Map<String, dynamic>.from(body);
+      }
+    }
+    throw Exception('getStsToken failed: ${body is Map ? (body['message'] ?? body['msg'] ?? body) : body}');
+  }
+
+  // --- 云端转写 (说话人分离) ---
+
+  Future<List<Map<String, dynamic>>> processAudioV2(String filePath) async {
+    final response = await _dio.get(
+      '/a2t/processV2',
+      queryParameters: {'filePath': filePath},
+      options: Options(
+        receiveTimeout: const Duration(minutes: 10),
+      ),
+    );
+    final body = response.data;
+    if (body is Map &&
+        (body['code'] == 200 || body['success'] == true) &&
+        body['data'] is List) {
+      return (body['data'] as List).cast<Map<String, dynamic>>();
+    }
+    // data 可能是嵌套 JSON 字符串
+    if (body is Map && body['data'] is String) {
+      try {
+        final parsed = jsonDecode(body['data'] as String);
+        if (parsed is List) {
+          return parsed.cast<Map<String, dynamic>>();
+        }
+      } catch (_) {}
+    }
+    throw Exception('processAudioV2 failed: ${body['message'] ?? body['msg'] ?? 'unknown'}');
+  }
 
   // --- 云端转写时长 ---
 

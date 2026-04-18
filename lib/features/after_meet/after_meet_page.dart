@@ -1,11 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
 import '../../shared/widgets/industry_template_dialog.dart';
 import '../../shared/widgets/nivo_button.dart';
+import '../../shared/widgets/processing_view.dart';
+import '../settings/settings_provider.dart';
 import 'after_meet_provider.dart';
 import 'recordings_list_page.dart';
 
@@ -22,15 +23,11 @@ class AfterMeetPage extends StatelessWidget {
               return _ResultView(provider: provider);
             }
             if (provider.isGenerating) {
-              return const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator.adaptive(),
-                    SizedBox(height: 16),
-                    Text('正在生成...', style: TextStyle(fontSize: 15)),
-                  ],
-                ),
+              return ProcessingView(
+                progress: provider.progress,
+                status: provider.progressStatus.isNotEmpty
+                    ? provider.progressStatus
+                    : '正在生成...',
               );
             }
             return _IdleView(provider: provider);
@@ -63,14 +60,14 @@ class _IdleView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '选择文件开始会后整理',
+                '选择录音开始会后整理',
                 style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
               ),
               const SizedBox(height: 40),
               NivoButton(
                 label: '开始整理',
                 width: 200,
-                onTap: () => _showInputSheet(context, provider),
+                onTap: () => _pickAndSubmit(context),
               ),
             ],
           ),
@@ -79,16 +76,7 @@ class _IdleView extends StatelessWidget {
           top: 16,
           right: 20,
           child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => RecordingsListPage(
-                    onSelect: (path) => provider.addLocalRecording(path),
-                  ),
-                ),
-              );
-            },
+            onTap: () => _pickAndSubmit(context),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -111,8 +99,24 @@ class _IdleView extends StatelessWidget {
     );
   }
 
+  Future<void> _pickAndSubmit(BuildContext context) async {
+    final paths = await Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RecordingsListPage(),
+      ),
+    );
+    if (paths != null && paths.isNotEmpty && context.mounted) {
+      for (final p in paths) {
+        provider.addLocalRecording(p);
+      }
+      if (context.mounted) {
+        _showInputSheet(context, provider);
+      }
+    }
+  }
+
   void _showInputSheet(BuildContext context, AfterMeetProvider provider) {
-    provider.loadLocalRecordings();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -139,54 +143,6 @@ class _InputSheetState extends State<_InputSheet> {
   void dispose() {
     _textController.dispose();
     super.dispose();
-  }
-
-  void _showSyncGuide() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('从语音备忘录导入'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('1. 打开「语音备忘录」App'),
-            SizedBox(height: 8),
-            Text('2. 长按录音，点击「分享」'),
-            SizedBox(height: 8),
-            Text('3. 选择「存储到文件」'),
-            SizedBox(height: 8),
-            Text('4. 回到 Nivo，点击「从文件选择」'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDelete(AfterMeetProvider provider, String path, String name) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除录音'),
-        content: Text('确定删除 $name 吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              provider.deleteLocalRecording(path);
-            },
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -218,62 +174,16 @@ class _InputSheetState extends State<_InputSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text('选择内容',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                  ),
-                  GestureDetector(
-                    onTap: _showSyncGuide,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent.withAlpha(25),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.sync, size: 14, color: AppColors.accent),
-                          SizedBox(width: 4),
-                          Text('从录音机同步',
-                              style: TextStyle(fontSize: 12, color: AppColors.accent)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              const Text('确认内容',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
                   children: [
-                    // Text input
-                    Text('会议文本（可选）',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _textController,
-                        onChanged: provider.setInputText,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText: '粘贴或输入会议内容...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                     // Selected files
                     if (provider.audioFilePaths.isNotEmpty) ...[
-                      Text('已选文件',
+                      Text('已选录音',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
                       const SizedBox(height: 8),
                       ...provider.audioFilePaths.asMap().entries.map((entry) {
@@ -301,72 +211,25 @@ class _InputSheetState extends State<_InputSheet> {
                           ),
                         );
                       }),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                     ],
-                    // Local recordings
-                    if (provider.localRecordings.isNotEmpty) ...[
-                      Text('本地录音',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
-                      const SizedBox(height: 8),
-                      ...provider.localRecordings.map((file) {
-                        final name = file.path.split('/').last;
-                        final stat = file.statSync();
-                        final date = DateFormat('MM/dd HH:mm').format(stat.modified);
-                        final sizeMb = (stat.size / 1024 / 1024).toStringAsFixed(1);
-                        final isSelected = provider.audioFilePaths.contains(file.path);
-                        return GestureDetector(
-                          onTap: isSelected ? null : () => provider.addLocalRecording(file.path),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.accent.withAlpha(15) : Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  isSelected ? Icons.check_circle : Icons.audio_file,
-                                  size: 16,
-                                  color: isSelected ? AppColors.accent : AppColors.neutral,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                                      Text('$date · ${sizeMb}MB',
-                                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _confirmDelete(provider, file.path, name),
-                                  icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.neutral),
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 8),
-                    ],
-                    // Pick from files
-                    SizedBox(
-                      width: double.infinity,
-                      child: CupertinoButton(
-                        onPressed: provider.pickAudioFile,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.folder_open, size: 16, color: AppColors.accent),
-                            const SizedBox(width: 6),
-                            Text('从文件选择', style: TextStyle(fontSize: 13, color: AppColors.accent)),
-                          ],
+                    // Text input
+                    Text('补充文本（可选）',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        onChanged: provider.setInputText,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          hintText: '粘贴或输入补充内容...',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(12),
                         ),
                       ),
                     ),
@@ -387,10 +250,12 @@ class _InputSheetState extends State<_InputSheet> {
                   onPressed: () async {
                     final result = await showIndustryTemplateDialog(context);
                     if (result != null && context.mounted) {
+                      final mode = context.read<SettingsProvider>().transcribeMode;
                       Navigator.pop(context); // close sheet
                       provider.submit(
                         industry: result.industry,
                         template: result.template,
+                        transcribeMode: mode,
                       );
                     }
                   },

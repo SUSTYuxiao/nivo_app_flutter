@@ -7,6 +7,9 @@ import 'core/services/auth_service.dart';
 import 'core/services/audio_service.dart';
 import 'core/services/vip_provider.dart';
 import 'core/services/duration_service.dart';
+import 'core/services/oss_service.dart';
+import 'core/services/transcription_service.dart';
+import 'core/services/fluid_audio_service.dart';
 import 'core/services/asr/cloud_asr.dart';
 import 'core/services/asr/sherpa_asr.dart';
 import 'core/services/asr/asr_router.dart';
@@ -47,6 +50,15 @@ void main() async {
 
   final durationService = DurationService(apiService: apiService);
 
+  final ossService = OssService(apiService: apiService);
+  final transcriptionService = TranscriptionService(
+    apiService: apiService,
+    ossService: ossService,
+  );
+
+  final fluidAudioService = FluidAudioService();
+  settingsProvider.setFluidAudioService(fluidAudioService);
+
   final vipProvider = VipProvider()..init(apiService);
 
   final loginProvider = LoginProvider()..setAuthService(authService);
@@ -57,6 +69,7 @@ void main() async {
       asrRouter: asrRouter,
       apiService: apiService,
       durationService: durationService,
+      transcriptionService: transcriptionService,
     );
 
   final historyProvider = HistoryProvider();
@@ -68,7 +81,11 @@ void main() async {
   }
 
   final afterMeetProvider = AfterMeetProvider()
-    ..init(apiService: apiService);
+    ..init(
+      apiService: apiService,
+      transcriptionService: transcriptionService,
+      fluidAudioService: fluidAudioService,
+    );
 
   runApp(
     MultiProvider(

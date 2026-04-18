@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -21,6 +23,7 @@ class _SettingsPageState extends State<SettingsPage> {
     // Refresh model download status when page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SettingsProvider>().refreshModelStatus();
+      context.read<SettingsProvider>().refreshFluidAudioModelStatus();
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         context.read<VipProvider>().fetchVipStatus(user.id);
@@ -113,22 +116,83 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 24),
                 _sectionLabel('语音识别'),
                 const SizedBox(height: 8),
-                _card(
-                  child: _tileRow(
-                    label: '完全本地处理',
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+                if (Platform.isIOS)
+                  _card(
+                    child: Column(
                       children: [
-                        Text('开发中', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
-                        const SizedBox(width: 8),
-                        Switch.adaptive(
-                          value: false,
-                          onChanged: null,
+                        _tileRow(
+                          label: '离线转写',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                settings.transcribeMode == TranscribeMode.local ? '本地' : '云端',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                              ),
+                              const SizedBox(width: 8),
+                              Switch.adaptive(
+                                value: settings.transcribeMode == TranscribeMode.local,
+                                onChanged: (v) {
+                                  settings.setTranscribeMode(
+                                    v ? TranscribeMode.local : TranscribeMode.cloud,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
+                        if (settings.transcribeMode == TranscribeMode.local)
+                          _tileRow(
+                            label: '本地模型',
+                            trailing: settings.isDownloadingFluidAudioModel
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(
+                                        width: 16, height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(settings.fluidAudioDownloadStatus,
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                                    ],
+                                  )
+                                : settings.fluidAudioModelReady
+                                    ? const Text('已就绪',
+                                        style: TextStyle(fontSize: 12, color: AppColors.success))
+                                    : GestureDetector(
+                                        onTap: () => settings.downloadFluidAudioModels(),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.accent.withAlpha(25),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Text('下载 (~700MB)',
+                                              style: TextStyle(fontSize: 12, color: AppColors.accent)),
+                                        ),
+                                      ),
+                          ),
                       ],
                     ),
                   ),
-                ),
+                if (!Platform.isIOS)
+                  _card(
+                    child: _tileRow(
+                      label: '离线转写',
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('云端', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                          const SizedBox(width: 8),
+                          Switch.adaptive(
+                            value: false,
+                            onChanged: null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 _sectionLabel('关于'),
                 const SizedBox(height: 8),

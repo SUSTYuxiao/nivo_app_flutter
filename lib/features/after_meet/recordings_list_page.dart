@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
@@ -7,8 +9,7 @@ import '../../core/constants.dart';
 import '../../core/services/audio_service.dart';
 
 class RecordingsListPage extends StatefulWidget {
-  final void Function(String path)? onSelect;
-  const RecordingsListPage({super.key, this.onSelect});
+  const RecordingsListPage({super.key});
 
   @override
   State<RecordingsListPage> createState() => _RecordingsListPageState();
@@ -19,6 +20,7 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
   final AudioPlayer _player = AudioPlayer();
   String? _playingPath;
   bool _isPlaying = false;
+  final Set<String> _selected = {};
 
   @override
   void initState() {
@@ -54,6 +56,32 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
     }
   }
 
+  void _toggleSelect(String path) {
+    setState(() {
+      if (_selected.contains(path)) {
+        _selected.remove(path);
+      } else {
+        _selected.add(path);
+      }
+    });
+  }
+
+  Future<void> _importFromFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      allowMultiple: true,
+    );
+    if (result != null) {
+      setState(() {
+        for (final file in result.files) {
+          if (file.path != null) {
+            _selected.add(file.path!);
+          }
+        }
+      });
+    }
+  }
+
   Future<void> _deleteRecording(String path, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -74,6 +102,7 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
         await _player.stop();
         _playingPath = null;
       }
+      _selected.remove(path);
       final file = File(path);
       if (await file.exists()) await file.delete();
       await _loadRecordings();
@@ -88,6 +117,11 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Imported files that are not in local recordings
+    final importedPaths = _selected
+        .where((p) => !_recordings.any((r) => r.path == p))
+        .toList();
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -102,97 +136,182 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
                     child: const Icon(Icons.arrow_back_ios, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  const Text('历史录音',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+                  const Expanded(
+                    child: Text('选择录音',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+                  ),
+                  GestureDetector(
+                    onTap: _importFromFiles,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.folder_open, size: 14, color: AppColors.accent),
+                          SizedBox(width: 4),
+                          Text('导入文件',
+                              style: TextStyle(fontSize: 12, color: AppColors.accent)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: _recordings.isEmpty
+              child: _recordings.isEmpty && importedPaths.isEmpty
                   ? Center(
-                      child: Text('暂无录音',
-                          style: TextStyle(color: Colors.grey.shade400)),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('暂无录音',
+                              style: TextStyle(color: Colors.grey.shade400)),
+                          const SizedBox(height: 16),
+                          CupertinoButton(
+                            onPressed: _importFromFiles,
+                            child: const Text('从文件导入',
+                                style: TextStyle(fontSize: 14, color: AppColors.accent)),
+                          ),
+                        ],
+                      ),
                     )
-                  : ListView.builder(
+                  : ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _recordings.length,
-                      itemBuilder: (context, index) {
-                        final file = _recordings[index];
-                        final name = file.path.split('/').last;
-                        final stat = file.statSync();
-                        final date = DateFormat('yyyy-MM-dd HH:mm').format(stat.modified);
-                        final sizeMb = (stat.size / 1024 / 1024).toStringAsFixed(1);
-                        final isCurrentPlaying = _playingPath == file.path;
+                      children: [
+                        // Imported external files
+                        if (importedPaths.isNotEmpty) ...[
+                          Text('导入的文件',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
+                          const SizedBox(height: 8),
+                          ...importedPaths.map((path) {
+                            final name = path.split('/').last;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withAlpha(15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.accent.withAlpha(50)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, size: 16, color: AppColors.accent),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
+                                  GestureDetector(
+                                    onTap: () => setState(() => _selected.remove(path)),
+                                    child: const Icon(Icons.close, size: 16, color: AppColors.neutral),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 16),
+                        ],
+                        // Local recordings
+                        if (_recordings.isNotEmpty) ...[
+                          Text('本地录音',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
+                          const SizedBox(height: 8),
+                        ],
+                        ..._recordings.map((file) {
+                          final name = file.path.split('/').last;
+                          final stat = file.statSync();
+                          final date = DateFormat('yyyy-MM-dd HH:mm').format(stat.modified);
+                          final sizeMb = (stat.size / 1024 / 1024).toStringAsFixed(1);
+                          final isCurrentPlaying = _playingPath == file.path;
+                          final isSelected = _selected.contains(file.path);
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () => _togglePlay(file.path),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accent.withAlpha(25),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Icon(
-                                    isCurrentPlaying && _isPlaying
-                                        ? Icons.pause_rounded
-                                        : Icons.play_arrow_rounded,
-                                    color: AppColors.accent,
-                                    size: 22,
-                                  ),
-                                ),
+                          return GestureDetector(
+                            onTap: () => _toggleSelect(file.path),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.accent.withAlpha(15) : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: isSelected
+                                    ? Border.all(color: AppColors.accent.withAlpha(50))
+                                    : null,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(name,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                                    const SizedBox(height: 4),
-                                    Text('$date · ${sizeMb}MB',
-                                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                                  ],
-                                ),
-                              ),
-                              if (widget.onSelect != null)
-                                GestureDetector(
-                                  onTap: () {
-                                    widget.onSelect!(file.path);
-                                    Navigator.pop(context);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accent.withAlpha(25),
-                                      borderRadius: BorderRadius.circular(12),
+                              child: Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _togglePlay(file.path),
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accent.withAlpha(25),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Icon(
+                                        isCurrentPlaying && _isPlaying
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        color: AppColors.accent,
+                                        size: 22,
+                                      ),
                                     ),
-                                    child: const Text('选择',
-                                        style: TextStyle(fontSize: 12, color: AppColors.accent)),
                                   ),
-                                ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => _deleteRecording(file.path, name),
-                                child: const Icon(Icons.delete_outline, size: 18, color: AppColors.neutral),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(name,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                        const SizedBox(height: 4),
+                                        Text('$date · ${sizeMb}MB',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                    size: 22,
+                                    color: isSelected ? AppColors.accent : AppColors.neutral,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _deleteRecording(file.path, name),
+                                    child: const Icon(Icons.delete_outline, size: 18, color: AppColors.neutral),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      },
+                            ),
+                          );
+                        }),
+                      ],
                     ),
+            ),
+            // Bottom confirm button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: CupertinoButton(
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () => Navigator.pop(context, _selected.toList()),
+                  color: AppColors.accent,
+                  disabledColor: AppColors.accent.withAlpha(80),
+                  borderRadius: BorderRadius.circular(24),
+                  padding: EdgeInsets.zero,
+                  child: Text(
+                    _selected.isEmpty ? '请选择录音' : '确认选择 (${_selected.length})',
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

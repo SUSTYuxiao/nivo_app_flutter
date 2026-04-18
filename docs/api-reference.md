@@ -112,6 +112,31 @@
 | POST | `/api/speech/audio?sessionId={sessionId}` | 发送 PCM 音频数据，Content-Type: `application/octet-stream`，body 为原始 PCM 二进制 |
 | POST | `/api/speech/stop?sessionId={sessionId}` | 发送停止信号，body 为空 |
 
+### OSS 上传
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/oss/getStsToken` | 获取阿里云 OSS STS 临时凭证，返回 `{region, bucket, accessKeyId, accessKeySecret, securityToken}` |
+
+### 云端离线转写（说话人分离）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/a2t/processV2?filePath={ossKey}` | 离线转写 + 说话人分离，返回 `[{beginTime, endTime, text, speakerId, speakerName}]` |
+
+### 云端转写计费
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/recording-duration/config?userId={userId}` | 查询云端转写用量/限额，返回 `{usage, limit}` |
+| POST | `/api/recording-duration/report?userId={userId}&duration={seconds}` | 上报转写时长（秒） |
+
+### 会员信息
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST (form) | `/api/pay/getVipExpire` | 查询 VIP 状态，body: `{userId}`，返回 `{productName, expireTime, ...}` |
+
 ---
 
 ## SSE 事件格式

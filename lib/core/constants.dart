@@ -43,3 +43,6 @@ enum ScenarioType {
 }
 
 enum AsrMode { auto, local }
+
+/// 会后整理 / 结束会议时的转写方式
+enum TranscribeMode { cloud, local }

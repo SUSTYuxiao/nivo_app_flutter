@@ -6,17 +6,23 @@ import '../../core/constants.dart';
 import '../../core/services/asr/asr_models.dart';
 import '../../core/services/asr/asr_router.dart';
 import '../../core/services/asr/sherpa_asr.dart';
+import '../../core/services/fluid_audio_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   late SharedPreferences _prefs;
   SherpaAsr? _sherpaAsr;
   AsrRouter? _asrRouter;
+  FluidAudioService? _fluidAudioService;
 
   AsrMode _asrMode = AsrMode.auto;
   String _cloudApiBaseUrl = apiBaseUrl;
   String _asrModelId = '';
   bool _useNivoTranscription = false;
   bool _devMode = false;
+  TranscribeMode _transcribeMode = TranscribeMode.cloud;
+  bool _fluidAudioModelReady = false;
+  bool _isDownloadingFluidAudioModel = false;
+  String _fluidAudioDownloadStatus = '';
 
   double _modelDownloadProgress = 0.0;
   bool _isDownloadingModel = false;
@@ -30,6 +36,10 @@ class SettingsProvider extends ChangeNotifier {
   String get asrModelId => _asrModelId;
   bool get useNivoTranscription => _useNivoTranscription;
   bool get devMode => _devMode;
+  TranscribeMode get transcribeMode => _transcribeMode;
+  bool get fluidAudioModelReady => _fluidAudioModelReady;
+  bool get isDownloadingFluidAudioModel => _isDownloadingFluidAudioModel;
+  String get fluidAudioDownloadStatus => _fluidAudioDownloadStatus;
   double get modelDownloadProgress => _modelDownloadProgress;
   bool get isDownloadingModel => _isDownloadingModel;
   String? get downloadingModelId => _downloadingModelId;
@@ -40,6 +50,38 @@ class SettingsProvider extends ChangeNotifier {
 
   void setAsrRouter(AsrRouter router) {
     _asrRouter = router;
+  }
+
+  void setFluidAudioService(FluidAudioService service) {
+    _fluidAudioService = service;
+  }
+
+  Future<void> refreshFluidAudioModelStatus() async {
+    if (_fluidAudioService == null) return;
+    _fluidAudioModelReady = await _fluidAudioService!.isModelReady();
+    notifyListeners();
+  }
+
+  Future<void> downloadFluidAudioModels() async {
+    if (_fluidAudioService == null || _isDownloadingFluidAudioModel) return;
+    _isDownloadingFluidAudioModel = true;
+    _fluidAudioDownloadStatus = '准备下载...';
+    notifyListeners();
+
+    try {
+      await _fluidAudioService!.downloadModels(
+        onStatus: (status) {
+          _fluidAudioDownloadStatus = status;
+          notifyListeners();
+        },
+      );
+      _fluidAudioModelReady = true;
+    } catch (e) {
+      _fluidAudioDownloadStatus = '下载失败: $e';
+    } finally {
+      _isDownloadingFluidAudioModel = false;
+      notifyListeners();
+    }
   }
 
   bool isModelDownloaded(String modelId) =>
@@ -54,6 +96,9 @@ class SettingsProvider extends ChangeNotifier {
     _asrModelId = _prefs.getString('asr_model_id') ?? '';
     _useNivoTranscription = _prefs.getBool('use_nivo_transcription') ?? false;
     _devMode = _prefs.getBool('dev_mode') ?? false;
+    _transcribeMode = TranscribeMode.values.byName(
+      _prefs.getString('transcribe_mode') ?? TranscribeMode.local.name,
+    );
   }
 
   /// Refresh download status for all known models.
@@ -124,6 +169,12 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setDevMode(bool value) async {
     _devMode = value;
     await _prefs.setBool('dev_mode', value);
+    notifyListeners();
+  }
+
+  Future<void> setTranscribeMode(TranscribeMode mode) async {
+    _transcribeMode = mode;
+    await _prefs.setString('transcribe_mode', mode.name);
     notifyListeners();
   }
 }

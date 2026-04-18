@@ -5,6 +5,7 @@ import '../../core/services/audio_service.dart';
 import '../../core/services/asr/asr_router.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/duration_service.dart';
+import '../../core/services/transcription_service.dart';
 
 enum MeetingPhase { idle, recording, result }
 
@@ -13,6 +14,7 @@ class MeetingProvider extends ChangeNotifier {
   AsrRouter? _asrRouter;
   ApiService? _apiService;
   DurationService? _durationService;
+  TranscriptionService? _transcriptionService;
 
   MeetingPhase _phase = MeetingPhase.idle;
   final List<Transcription> _transcriptions = [];
@@ -26,6 +28,7 @@ class MeetingProvider extends ChangeNotifier {
   bool _isGenerating = false;
   String? _errorMessage;
   String? _userId;
+  String _generatingStatus = '';
   /// Saved value to restore after meeting ends
   bool? _savedUseNivoTranscription;
 
@@ -38,17 +41,20 @@ class MeetingProvider extends ChangeNotifier {
   String? get lastRecordingPath => _lastRecordingPath;
   bool get isPaused => _isPaused;
   bool get globalCapture => _globalCapture;
+  String get generatingStatus => _generatingStatus;
 
   void init({
     required AudioService audioService,
     required AsrRouter asrRouter,
     required ApiService apiService,
     DurationService? durationService,
+    TranscriptionService? transcriptionService,
   }) {
     _audioService = audioService;
     _asrRouter = asrRouter;
     _apiService = apiService;
     _durationService = durationService;
+    _transcriptionService = transcriptionService;
   }
 
   void setUserId(String userId) {
@@ -184,12 +190,41 @@ class MeetingProvider extends ChangeNotifier {
     await _asrRouter?.stopStream();
 
     _isGenerating = true;
+    _generatingStatus = '正在转写...';
     notifyListeners();
 
     try {
-      final fullTranscript = _transcriptions.map((t) => t.text).join('\n');
+      String content;
+
+      // Try cloud transcription if we have a recording and the service
+      if (_lastRecordingPath != null && _transcriptionService != null) {
+        try {
+          _generatingStatus = '上传录音...';
+          notifyListeners();
+
+          final sentences = await _transcriptionService!.transcribeAudio(
+            _lastRecordingPath!,
+            onProgress: (progress, status) {
+              _generatingStatus = status;
+              notifyListeners();
+            },
+          );
+          content = TranscriptionService.formatAsMarkdown(sentences);
+          debugPrint('[MeetingProvider] cloud transcription: ${sentences.length} sentences, ${content.length} chars');
+        } catch (e) {
+          debugPrint('[MeetingProvider] cloud transcription failed, falling back to realtime: $e');
+          content = _transcriptions.map((t) => t.text).join('\n');
+          debugPrint('[MeetingProvider] fallback realtime text: ${content.length} chars');
+        }
+      } else {
+        content = _transcriptions.map((t) => t.text).join('\n');
+      }
+
+      _generatingStatus = '生成纪要中...';
+      notifyListeners();
+
       final result = await _apiService!.chatRun(
-        content: fullTranscript,
+        content: content,
         industry: industry,
         outputType: template,
       );
@@ -199,6 +234,7 @@ class MeetingProvider extends ChangeNotifier {
       _errorMessage = '纪要生成失败: $e';
     } finally {
       _isGenerating = false;
+      _generatingStatus = '';
       _restoreUseNivoTranscription();
       notifyListeners();
     }
