@@ -4,6 +4,79 @@ import '../../../core/constants.dart';
 import '../../../shared/widgets/industry_template_dialog.dart';
 import '../meeting_provider.dart';
 
+enum _EndAction { submit, discard, cancel }
+
+Future<_EndAction?> _showEndMeetingDialog(BuildContext context) {
+  return showModalBottomSheet<_EndAction>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (_) => Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text('结束会议', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context, _EndAction.submit),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                alignment: Alignment.center,
+                child: const Text('生成会议纪要',
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context, _EndAction.discard),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                alignment: Alignment.center,
+                child: const Text('放弃总结',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => Navigator.pop(context, _EndAction.cancel),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('继续录音', style: TextStyle(fontSize: 14, color: AppColors.neutral)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class RecordingPanel extends StatelessWidget {
   const RecordingPanel({super.key});
 
@@ -94,38 +167,75 @@ class RecordingPanel extends StatelessWidget {
               )
             else
               Padding(
-                padding: const EdgeInsets.only(bottom: 32),
-                child: GestureDetector(
-                  onTap: () async {
-                    // Pause timer while dialog is open
-                    meeting.pauseTimer();
-                    final result = await showIndustryTemplateDialog(context);
-                    if (result != null && context.mounted) {
-                      context.read<MeetingProvider>().endMeeting(
-                            industry: result.industry,
-                            template: result.template,
-                          );
-                    } else {
-                      // User cancelled, resume timer
-                      meeting.resumeTimer();
-                    }
-                  },
-                  child: Container(
-                    width: 200,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppColors.recording,
-                      borderRadius: BorderRadius.circular(25),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Pause / Resume button
+                    GestureDetector(
+                      onTap: () {
+                        if (meeting.isPaused) {
+                          meeting.resumeTimer();
+                        } else {
+                          meeting.pauseTimer();
+                        }
+                      },
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          meeting.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                          size: 24,
+                          color: Colors.black87,
+                        ),
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '结束会议',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600),
+                    const SizedBox(width: 20),
+                    // End meeting button
+                    GestureDetector(
+                      onTap: () async {
+                        meeting.pauseTimer();
+                        final action = await _showEndMeetingDialog(context);
+                        if (!context.mounted) return;
+                        if (action == _EndAction.submit) {
+                          final result = await showIndustryTemplateDialog(context);
+                          if (result != null && context.mounted) {
+                            context.read<MeetingProvider>().endMeeting(
+                                  industry: result.industry,
+                                  template: result.template,
+                                );
+                          } else {
+                            meeting.resumeTimer();
+                          }
+                        } else if (action == _EndAction.discard) {
+                          meeting.reset();
+                        } else {
+                          meeting.resumeTimer();
+                        }
+                      },
+                      child: Container(
+                        width: 140,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: AppColors.recording,
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          '结束会议',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             if (meeting.errorMessage != null)
