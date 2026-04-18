@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../core/services/asr/asr_models.dart';
+import '../../core/services/asr/asr_router.dart';
 import '../../core/services/asr/sherpa_asr.dart';
 
 class SettingsProvider extends ChangeNotifier {
   late SharedPreferences _prefs;
   SherpaAsr? _sherpaAsr;
+  AsrRouter? _asrRouter;
 
   AsrMode _asrMode = AsrMode.auto;
   String _cloudApiBaseUrl = apiBaseUrl;
@@ -32,6 +34,10 @@ class SettingsProvider extends ChangeNotifier {
 
   void setSherpaAsr(SherpaAsr asr) {
     _sherpaAsr = asr;
+  }
+
+  void setAsrRouter(AsrRouter router) {
+    _asrRouter = router;
   }
 
   bool isModelDownloaded(String modelId) =>
@@ -88,6 +94,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setAsrMode(AsrMode mode) async {
     _asrMode = mode;
+    _asrRouter?.mode = mode;
     await _prefs.setString('asr_mode', mode.name);
     notifyListeners();
   }
@@ -106,6 +113,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setUseNivoTranscription(bool value) async {
     _useNivoTranscription = value;
+    _asrRouter?.useNivoTranscription = value;
     await _prefs.setBool('use_nivo_transcription', value);
     notifyListeners();
   }

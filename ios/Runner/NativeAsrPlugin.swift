@@ -16,6 +16,7 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var isStreaming = false
+    private var pcmFormat: AVAudioFormat?
 
     func register(with messenger: FlutterBinaryMessenger) {
         methodChannel = FlutterMethodChannel(name: NativeAsrPlugin.channelName, binaryMessenger: messenger)
@@ -142,7 +143,12 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
 
         let sampleRate: Double = 16000
         let channels: UInt32 = 1
-        guard let format = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: true) else { return }
+
+        // Cache format to avoid allocating on every chunk
+        if pcmFormat == nil {
+            pcmFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: true)
+        }
+        guard let format = pcmFormat else { return }
 
         let frameCount = UInt32(pcmData.count) / (channels * 2)
         guard frameCount > 0 else { return }
@@ -159,9 +165,9 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     }
 
     private func stopRecognition() {
-        recognitionTask?.cancel()
-        recognitionTask = nil
         recognitionRequest?.endAudio()
+        recognitionTask?.finish()
+        recognitionTask = nil
         recognitionRequest = nil
         isStreaming = false
         NSLog("[NativeAsr] stopped")

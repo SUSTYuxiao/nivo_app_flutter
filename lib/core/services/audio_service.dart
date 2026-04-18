@@ -9,28 +9,34 @@ class AudioService {
   StreamSubscription<List<int>>? _streamSub;
   bool _isRecording = false;
   String? _currentFilePath;
-  final List<int> _pcmBuffer = [];
+  IOSink? _fileSink;
+  int _bytesWritten = 0;
+
+  static String? _recordingsDirPath;
 
   bool get isRecording => _isRecording;
   String? get currentFilePath => _currentFilePath;
 
   Future<bool> hasPermission() => _recorder.hasPermission();
 
-  /// Get the directory where recordings are stored.
-  static Future<Directory> getRecordingsDir() async {
+  /// Get the directory where recordings are stored. Cached after first call.
+  static Future<String> getRecordingsDirPath() async {
+    if (_recordingsDirPath != null) return _recordingsDirPath!;
     final appDir = await getApplicationDocumentsDirectory();
     final dir = Directory('${appDir.path}/recordings');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return dir;
+    await dir.create(recursive: true);
+    _recordingsDirPath = dir.path;
+    return _recordingsDirPath!;
   }
 
   /// List all local recording files, newest first.
   static Future<List<FileSystemEntity>> listRecordings() async {
-    final dir = await getRecordingsDir();
+    final dirPath = await getRecordingsDirPath();
+    final dir = Directory(dirPath);
     final files = dir.listSync().where((f) => f.path.endsWith('.wav')).toList();
-    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    // Cache stat results to avoid O(N log N) statSync calls in sort
+    final stats = {for (final f in files) f.path: f.statSync()};
+    files.sort((a, b) => stats[b.path]!.modified.compareTo(stats[a.path]!.modified));
     return files;
   }
 
@@ -43,10 +49,15 @@ class AudioService {
     final hasPerms = await _recorder.hasPermission();
     if (!hasPerms) throw Exception('Microphone permission denied');
 
-    _pcmBuffer.clear();
-    final dir = await getRecordingsDir();
+    final dirPath = await getRecordingsDirPath();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    _currentFilePath = '${dir.path}/recording_$timestamp.wav';
+    _currentFilePath = '$dirPath/recording_$timestamp.wav';
+    _bytesWritten = 0;
+
+    // Write placeholder WAV header (44 bytes), will be updated on stop
+    final file = File(_currentFilePath!);
+    await file.writeAsBytes(List.filled(44, 0));
+    _fileSink = file.openWrite(mode: FileMode.append);
 
     final stream = await _recorder.startStream(
       RecordConfig(
@@ -60,7 +71,9 @@ class AudioService {
 
     _isRecording = true;
     _streamSub = stream.listen((data) {
-      _pcmBuffer.addAll(data);
+      // Write to file incrementally
+      _fileSink?.add(data);
+      _bytesWritten += data.length;
       onAudioData(Uint8List.fromList(data));
     });
   }
@@ -72,22 +85,30 @@ class AudioService {
     await _recorder.stop();
     _isRecording = false;
 
-    // Save PCM buffer as WAV file
-    if (_currentFilePath != null && _pcmBuffer.isNotEmpty) {
-      await _writeWav(_currentFilePath!, _pcmBuffer, 16000, 1);
+    await _fileSink?.flush();
+    await _fileSink?.close();
+    _fileSink = null;
+
+    // Update WAV header with correct data size
+    if (_currentFilePath != null && _bytesWritten > 0) {
+      await _updateWavHeader(_currentFilePath!, _bytesWritten, 16000, 1);
       final path = _currentFilePath;
-      _pcmBuffer.clear();
       _currentFilePath = null;
       return path;
     }
-    _pcmBuffer.clear();
+    // No data recorded, clean up empty file
+    if (_currentFilePath != null) {
+      try {
+        await File(_currentFilePath!).delete();
+      } catch (_) {}
+    }
     _currentFilePath = null;
     return null;
   }
 
-  static Future<void> _writeWav(
-      String path, List<int> pcmData, int sampleRate, int channels) async {
-    final dataSize = pcmData.length;
+  static Future<void> _updateWavHeader(
+      String path, int dataSize, int sampleRate, int channels) async {
+    final raf = await File(path).open(mode: FileMode.write);
     final header = ByteData(44);
     // RIFF header
     header.setUint8(0, 0x52); // R
@@ -104,13 +125,13 @@ class AudioService {
     header.setUint8(13, 0x6D); // m
     header.setUint8(14, 0x74); // t
     header.setUint8(15, 0x20); // (space)
-    header.setUint32(16, 16, Endian.little); // chunk size
-    header.setUint16(20, 1, Endian.little); // PCM format
+    header.setUint32(16, 16, Endian.little);
+    header.setUint16(20, 1, Endian.little); // PCM
     header.setUint16(22, channels, Endian.little);
     header.setUint32(24, sampleRate, Endian.little);
-    header.setUint32(28, sampleRate * channels * 2, Endian.little); // byte rate
-    header.setUint16(32, channels * 2, Endian.little); // block align
-    header.setUint16(34, 16, Endian.little); // bits per sample
+    header.setUint32(28, sampleRate * channels * 2, Endian.little);
+    header.setUint16(32, channels * 2, Endian.little);
+    header.setUint16(34, 16, Endian.little);
     // data chunk
     header.setUint8(36, 0x64); // d
     header.setUint8(37, 0x61); // a
@@ -118,12 +139,13 @@ class AudioService {
     header.setUint8(39, 0x61); // a
     header.setUint32(40, dataSize, Endian.little);
 
-    final file = File(path);
-    await file.writeAsBytes([...header.buffer.asUint8List(), ...pcmData]);
+    await raf.setPosition(0);
+    await raf.writeFrom(header.buffer.asUint8List());
+    await raf.close();
   }
 
-  void dispose() {
-    stopRecording();
+  Future<void> dispose() async {
+    await stopRecording();
     _recorder.dispose();
   }
 }

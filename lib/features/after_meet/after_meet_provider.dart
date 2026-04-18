@@ -40,10 +40,9 @@ class AfterMeetProvider extends ChangeNotifier {
   }
 
   Future<void> deleteLocalRecording(String path) async {
-    final file = File(path);
-    if (await file.exists()) {
-      await file.delete();
-    }
+    try {
+      await File(path).delete();
+    } catch (_) {}
     _audioFilePaths.remove(path);
     _localRecordings.removeWhere((f) => f.path == path);
     notifyListeners();

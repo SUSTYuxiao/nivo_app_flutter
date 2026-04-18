@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:record/record.dart';
 import 'core/services/api_service.dart';
 import 'core/services/auth_service.dart';
-import 'core/services/audio_service.dart';
 import 'core/theme.dart';
 import 'features/login/login_page.dart';
 import 'features/meeting/meeting_page.dart';
@@ -47,12 +49,20 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
+  late final StreamSubscription<AuthState> _authSub;
+
   @override
   void initState() {
     super.initState();
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (mounted) setState(() {});
     });
+  }
+
+  @override
+  void dispose() {
+    _authSub.cancel();
+    super.dispose();
   }
 
   @override
@@ -109,7 +119,7 @@ class _MainShellState extends State<_MainShell> {
           );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AudioService().hasPermission();
+      AudioRecorder().hasPermission();
     });
   }
 

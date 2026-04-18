@@ -104,21 +104,5 @@ class ApiService {
     throw Exception('chatRun failed: ${body['message'] ?? body['msg'] ?? body['error'] ?? 'unknown error'}');
   }
 
-  // --- 音频数据发送 ---
-
-  Future<void> sendAudioData(String sessionId, List<int> pcmData) async {
-    await _dio.post(
-      '/api/speech/audio',
-      queryParameters: {'sessionId': sessionId},
-      data: Stream.fromIterable([pcmData]),
-      options: Options(contentType: 'application/octet-stream'),
-    );
-  }
-
-  Future<void> sendStopSignal(String sessionId) async {
-    await _dio.post('/api/speech/stop',
-        queryParameters: {'sessionId': sessionId});
-  }
-
   Dio get dio => _dio;
 }

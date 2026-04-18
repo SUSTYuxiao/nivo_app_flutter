@@ -86,9 +86,11 @@ class HistoryProvider extends ChangeNotifier {
 
   Future<void> deleteItem(String id) async {
     if (_apiService == null || _userId == null) return;
-    await _apiService!.deleteHistory(_userId!, id);
-    _items.removeWhere((item) => item.id == id);
-    notifyListeners();
+    try {
+      await _apiService!.deleteHistory(_userId!, id);
+      _items.removeWhere((item) => item.id == id);
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> updateTitle(String id, String newTitle) async {

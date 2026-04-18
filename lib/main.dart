@@ -39,7 +39,9 @@ void main() async {
     cloud: cloudAsr,
     sherpa: sherpaAsr,
     mode: settingsProvider.asrMode,
+    useNivoTranscription: settingsProvider.useNivoTranscription,
   );
+  settingsProvider.setAsrRouter(asrRouter);
 
   final loginProvider = LoginProvider()..setAuthService(authService);
 
