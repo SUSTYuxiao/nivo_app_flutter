@@ -48,7 +48,13 @@ class TranscriptionService {
 
     final ossKey = await _ossService.uploadAudio(
       localPath,
-      onProgress: (p) => onProgress?.call(p * 0.9, '上传中'),
+      onProgress: (p) {
+        if (p >= 1.0) {
+          onProgress?.call(0.9, '等待服务器确认...');
+        } else {
+          onProgress?.call(p * 0.9, '上传中');
+        }
+      },
     );
 
     onProgress?.call(0.9, '转写中');

@@ -19,6 +19,7 @@ class SettingsProvider extends ChangeNotifier {
   String _asrModelId = '';
   bool _useNivoTranscription = false;
   bool _devMode = false;
+  bool _useStreaming = true;
   TranscribeMode _transcribeMode = TranscribeMode.cloud;
   bool _fluidAudioModelReady = false;
   bool _isDownloadingFluidAudioModel = false;
@@ -36,6 +37,7 @@ class SettingsProvider extends ChangeNotifier {
   String get asrModelId => _asrModelId;
   bool get useNivoTranscription => _useNivoTranscription;
   bool get devMode => _devMode;
+  bool get useStreaming => _useStreaming;
   TranscribeMode get transcribeMode => _transcribeMode;
   bool get fluidAudioModelReady => _fluidAudioModelReady;
   bool get isDownloadingFluidAudioModel => _isDownloadingFluidAudioModel;
@@ -96,6 +98,7 @@ class SettingsProvider extends ChangeNotifier {
     _asrModelId = _prefs.getString('asr_model_id') ?? '';
     _useNivoTranscription = _prefs.getBool('use_nivo_transcription') ?? false;
     _devMode = _prefs.getBool('dev_mode') ?? false;
+    _useStreaming = _prefs.getBool('use_streaming') ?? true;
     _transcribeMode = TranscribeMode.values.byName(
       _prefs.getString('transcribe_mode') ?? TranscribeMode.local.name,
     );
@@ -169,6 +172,12 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setDevMode(bool value) async {
     _devMode = value;
     await _prefs.setBool('dev_mode', value);
+    notifyListeners();
+  }
+
+  Future<void> setUseStreaming(bool value) async {
+    _useStreaming = value;
+    await _prefs.setBool('use_streaming', value);
     notifyListeners();
   }
 

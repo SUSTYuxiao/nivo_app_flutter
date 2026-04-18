@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/models/transcription.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/asr/asr_router.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/duration_service.dart';
 import '../../core/services/transcription_service.dart';
+import '../history/history_provider.dart';
+import '../settings/settings_provider.dart';
 
 enum MeetingPhase { idle, recording, result }
 
@@ -15,6 +18,8 @@ class MeetingProvider extends ChangeNotifier {
   ApiService? _apiService;
   DurationService? _durationService;
   TranscriptionService? _transcriptionService;
+  SettingsProvider? _settingsProvider;
+  HistoryProvider? _historyProvider;
 
   MeetingPhase _phase = MeetingPhase.idle;
   final List<Transcription> _transcriptions = [];
@@ -49,12 +54,16 @@ class MeetingProvider extends ChangeNotifier {
     required ApiService apiService,
     DurationService? durationService,
     TranscriptionService? transcriptionService,
+    SettingsProvider? settingsProvider,
+    HistoryProvider? historyProvider,
   }) {
     _audioService = audioService;
     _asrRouter = asrRouter;
     _apiService = apiService;
     _durationService = durationService;
     _transcriptionService = transcriptionService;
+    _settingsProvider = settingsProvider;
+    _historyProvider = historyProvider;
   }
 
   void setUserId(String userId) {
@@ -223,13 +232,32 @@ class MeetingProvider extends ChangeNotifier {
       _generatingStatus = '生成纪要中...';
       notifyListeners();
 
-      final result = await _apiService!.chatRun(
-        content: content,
-        industry: industry,
-        outputType: template,
-      );
-      _meetingResult = result;
-      _phase = MeetingPhase.result;
+      final useStreaming = _settingsProvider?.useStreaming ?? true;
+
+      if (useStreaming) {
+        _meetingResult = '';
+        _phase = MeetingPhase.result;
+        notifyListeners();
+        await for (final chunk in _apiService!.chatRunStream(
+          content: content,
+          industry: industry,
+          outputType: template,
+        )) {
+          _meetingResult = (_meetingResult ?? '') + chunk;
+          notifyListeners();
+        }
+      } else {
+        final result = await _apiService!.chatRun(
+          content: content,
+          industry: industry,
+          outputType: template,
+        );
+        _meetingResult = result;
+        _phase = MeetingPhase.result;
+      }
+
+      // 自动保存到历史
+      await _saveToHistory(content);
     } catch (e) {
       _errorMessage = '纪要生成失败: $e';
     } finally {
@@ -266,6 +294,23 @@ class MeetingProvider extends ChangeNotifier {
     if (_savedUseNivoTranscription != null) {
       _asrRouter?.useNivoTranscription = _savedUseNivoTranscription!;
       _savedUseNivoTranscription = null;
+    }
+  }
+
+  Future<void> _saveToHistory(String input) async {
+    if (_meetingResult == null || _meetingResult!.isEmpty) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _apiService!.addHistory(
+        userId: user.id,
+        email: user.email ?? '',
+        result: _meetingResult!,
+        input: input,
+      );
+      await _historyProvider?.refresh();
+    } catch (e) {
+      debugPrint('[MeetingProvider] save history failed: $e');
     }
   }
 

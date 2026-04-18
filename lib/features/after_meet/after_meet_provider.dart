@@ -1,15 +1,20 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/transcription_service.dart';
 import '../../core/services/fluid_audio_service.dart';
+import '../history/history_provider.dart';
+import '../settings/settings_provider.dart';
 
 class AfterMeetProvider extends ChangeNotifier {
   ApiService? _apiService;
   TranscriptionService? _transcriptionService;
   FluidAudioService? _fluidAudioService;
+  SettingsProvider? _settingsProvider;
+  HistoryProvider? _historyProvider;
 
   String _inputText = '';
   final List<String> _audioFilePaths = [];
@@ -31,10 +36,14 @@ class AfterMeetProvider extends ChangeNotifier {
     required ApiService apiService,
     TranscriptionService? transcriptionService,
     FluidAudioService? fluidAudioService,
+    SettingsProvider? settingsProvider,
+    HistoryProvider? historyProvider,
   }) {
     _apiService = apiService;
     _transcriptionService = transcriptionService;
     _fluidAudioService = fluidAudioService;
+    _settingsProvider = settingsProvider;
+    _historyProvider = historyProvider;
   }
 
   void addLocalRecording(String path) {
@@ -136,12 +145,30 @@ class AfterMeetProvider extends ChangeNotifier {
       notifyListeners();
 
       final content = transcripts.join('\n\n');
-      final result = await _apiService!.chatRun(
-        content: content,
-        industry: industry,
-        outputType: template,
-      );
-      _result = result;
+      final useStreaming = _settingsProvider?.useStreaming ?? true;
+
+      if (useStreaming) {
+        _result = '';
+        notifyListeners();
+        await for (final chunk in _apiService!.chatRunStream(
+          content: content,
+          industry: industry,
+          outputType: template,
+        )) {
+          _result = (_result ?? '') + chunk;
+          notifyListeners();
+        }
+      } else {
+        final result = await _apiService!.chatRun(
+          content: content,
+          industry: industry,
+          outputType: template,
+        );
+        _result = result;
+      }
+
+      // 自动保存到历史
+      await _saveToHistory(content);
     } catch (e) {
       _errorMessage = '生成失败: $e';
     } finally {
@@ -159,5 +186,22 @@ class AfterMeetProvider extends ChangeNotifier {
     _isGenerating = false;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> _saveToHistory(String input) async {
+    if (_result == null || _result!.isEmpty) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      await _apiService!.addHistory(
+        userId: user.id,
+        email: user.email ?? '',
+        result: _result!,
+        input: input,
+      );
+      await _historyProvider?.refresh();
+    } catch (e) {
+      debugPrint('[AfterMeetProvider] save history failed: $e');
+    }
   }
 }

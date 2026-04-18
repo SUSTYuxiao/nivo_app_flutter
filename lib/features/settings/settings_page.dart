@@ -222,6 +222,14 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ),
                         ),
+                      if (settings.devMode)
+                        _tileRow(
+                          label: '流式生成',
+                          trailing: Switch.adaptive(
+                            value: settings.useStreaming,
+                            onChanged: (v) => settings.setUseStreaming(v),
+                          ),
+                        ),
                     ],
                   ),
                 ),

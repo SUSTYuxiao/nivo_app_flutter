@@ -63,6 +63,13 @@ void main() async {
 
   final loginProvider = LoginProvider()..setAuthService(authService);
 
+  final historyProvider = HistoryProvider();
+  final user = authService.currentUser;
+  if (user != null) {
+    historyProvider.init(apiService: apiService, userId: user.id);
+    vipProvider.fetchVipStatus(user.id);
+  }
+
   final meetingProvider = MeetingProvider()
     ..init(
       audioService: audioService,
@@ -70,14 +77,12 @@ void main() async {
       apiService: apiService,
       durationService: durationService,
       transcriptionService: transcriptionService,
+      settingsProvider: settingsProvider,
+      historyProvider: historyProvider,
     );
 
-  final historyProvider = HistoryProvider();
-  final user = authService.currentUser;
   if (user != null) {
-    historyProvider.init(apiService: apiService, userId: user.id);
     meetingProvider.setUserId(user.id);
-    vipProvider.fetchVipStatus(user.id);
   }
 
   final afterMeetProvider = AfterMeetProvider()
@@ -85,6 +90,8 @@ void main() async {
       apiService: apiService,
       transcriptionService: transcriptionService,
       fluidAudioService: fluidAudioService,
+      settingsProvider: settingsProvider,
+      historyProvider: historyProvider,
     );
 
   runApp(

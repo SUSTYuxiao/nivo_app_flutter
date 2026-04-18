@@ -76,7 +76,9 @@
 | GET | `/db/getHistoryList?userId={userId}&page={page}&pageSize={pageSize}&timeRange={timeRange}` | 获取历史记录列表 |
 | POST (form) | `/db/delHistory` | 删除历史记录，body: `{userId, id}` |
 | POST (form) | `/db/updateHistoryTitle` | 更新历史标题，body: `{userId, id, title}` |
-| POST (form) | `/db/addHistory` | 添加历史记录，body: `{userId, email?, createTime, result, input}` |
+| POST (form) | `/db/addHistory` | 添加历史记录，body: `{userId, email?, result, input}` |
+
+> `result` 字段格式为 JSON 字符串: `{"default": "纪要文本内容"}`
 
 > 注意: `delHistory`、`updateHistoryTitle`、`addHistory` 使用 `application/x-www-form-urlencoded` 格式（postForm）。
 
@@ -90,7 +92,20 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/chat/run` | 调用会议纪要生成工作流，body: `ChatRunParams` |
+| POST | `/api/chat/run` | 调用会议纪要生成工作流（非流式），body: `ChatRunParams` |
+| POST (SSE) | `/api/chat/sse` | 流式纪要生成，body: `ChatRunParams`，返回 SSE 文本流 |
+
+#### `/api/chat/sse` SSE 格式
+
+请求 Header: `Accept: text/event-stream`
+
+响应为标准 SSE 流，每行 `data: {...}` 包含一个 JSON 对象：
+
+| 字段 | 说明 |
+|------|------|
+| `content` / `data` / `text` | 纪要文本片段（增量） |
+
+流结束标志: `data: [DONE]`
 
 ### 文件上传
 

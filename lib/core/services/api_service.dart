@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -103,6 +104,89 @@ class ApiService {
       return data?.toString() ?? '';
     }
     throw Exception('chatRun failed: ${body['message'] ?? body['msg'] ?? body['error'] ?? 'unknown error'}');
+  }
+
+  /// SSE 流式纪要生成，yield 文本片段
+  Stream<String> chatRunStream({
+    required String content,
+    required String industry,
+    required String outputType,
+  }) async* {
+    final response = await _dio.post(
+      '/api/chat/sse',
+      data: {
+        'app_id': '',
+        'workflow_id': '',
+        'parameters': {
+          'Content': content,
+          'Industry': industry,
+          'Output_type': outputType,
+          'app_id': '1',
+          'audioNum': 0,
+          'textNum': 0,
+          'files': '',
+        },
+      },
+      options: Options(
+        responseType: ResponseType.stream,
+        headers: {'Accept': 'text/event-stream'},
+      ),
+    );
+
+    final stream = response.data.stream as Stream<List<int>>;
+    String buffer = '';
+
+    await for (final chunk in stream) {
+      buffer += utf8.decode(chunk);
+      final lines = buffer.split('\n');
+      buffer = lines.removeLast(); // keep incomplete line in buffer
+
+      for (final line in lines) {
+        if (line.startsWith('data:')) {
+          final data = line.substring(5).trim();
+          if (data == '[DONE]') return;
+          if (data.isEmpty) continue;
+          try {
+            final json = jsonDecode(data);
+            if (json is Map) {
+              // 兼容多种 SSE 格式
+              final text = json['content'] ?? json['data'] ?? json['text'] ?? '';
+              if (text is String && text.isNotEmpty) {
+                yield text;
+              }
+            } else if (json is String && json.isNotEmpty) {
+              yield json;
+            }
+          } catch (_) {
+            // 非 JSON 的 data 行直接作为文本
+            if (data.isNotEmpty) yield data;
+          }
+        }
+      }
+    }
+    // flush remaining buffer
+    if (buffer.startsWith('data:')) {
+      final data = buffer.substring(5).trim();
+      if (data.isNotEmpty && data != '[DONE]') {
+        yield data;
+      }
+    }
+  }
+
+  /// 保存纪要到历史
+  Future<void> addHistory({
+    required String userId,
+    required String email,
+    required String result,
+    String input = '',
+  }) async {
+    await _dio.post('/db/addHistory',
+        data: FormData.fromMap({
+          'userId': userId,
+          'email': email,
+          'result': jsonEncode({'default': result}),
+          'input': input,
+        }));
   }
 
   Dio get dio => _dio;
