@@ -205,6 +205,7 @@ class _TimeFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filters = [
+      (null, '全部'),
       ('today', '今天'),
       ('7days', '7天内'),
       ('30days', '30天内'),

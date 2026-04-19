@@ -17,7 +17,7 @@ const String apiBaseUrl = 'https://www.nivowork.cn';
 const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const String supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
-const List<String> industryOptions = ['企业服务', '金融', '消费', '科技', '制造'];
+const List<String> industryOptions = ['企业服务', '消费文娱电商', '金融', '半导体', '信息科技', '材料', '能源', '制造'];
 
 enum TemplateMode { classic, scenario, custom }
 

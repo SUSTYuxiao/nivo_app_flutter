@@ -114,4 +114,29 @@ class HistoryProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<String?> generateTitle(String id) async {
+    if (_apiService == null) return null;
+    final title = await _apiService!.generateTitle(id);
+    if (title != null && title.isNotEmpty) {
+      final index = _items.indexWhere((item) => item.id == id);
+      if (index != -1) {
+        final old = _items[index];
+        _items[index] = HistoryItem(
+          id: old.id,
+          title: title,
+          userId: old.userId,
+          email: old.email,
+          industry: old.industry,
+          outputType: old.outputType,
+          result: old.result,
+          input: old.input,
+          createTime: old.createTime,
+          updateTime: old.updateTime,
+        );
+        notifyListeners();
+      }
+    }
+    return title;
+  }
 }

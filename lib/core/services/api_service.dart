@@ -67,6 +67,16 @@ class ApiService {
         data: FormData.fromMap({'userId': userId, 'id': id, 'title': title}));
   }
 
+  Future<String?> generateTitle(String historyId) async {
+    final response = await _dio.post('/db/generateTitle',
+        queryParameters: {'historyId': historyId});
+    final body = response.data;
+    if (body is Map && (body['code'] == 200 || body['success'] == true)) {
+      return body['data']?.toString();
+    }
+    return null;
+  }
+
   // --- 会议纪要生成 ---
 
   Future<String> chatRun({
@@ -142,6 +152,12 @@ class ApiService {
       buffer = lines.removeLast(); // keep incomplete line in buffer
 
       for (final line in lines) {
+        // Coze SSE: event: Done 表示流结束
+        if (line.startsWith('event:')) {
+          final event = line.substring(6).trim();
+          if (event == 'Done') return;
+          continue;
+        }
         if (line.startsWith('data:')) {
           final data = line.substring(5).trim();
           if (data == '[DONE]') return;
@@ -149,7 +165,9 @@ class ApiService {
           try {
             final json = jsonDecode(data);
             if (json is Map) {
-              // 兼容多种 SSE 格式
+              // Coze 格式: {"event":"Message","content":"..."}
+              final event = json['event'];
+              if (event == 'Done') return;
               final text = json['content'] ?? json['data'] ?? json['text'] ?? '';
               if (text is String && text.isNotEmpty) {
                 yield text;

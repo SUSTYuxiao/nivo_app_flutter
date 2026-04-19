@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -168,7 +169,7 @@ class AfterMeetProvider extends ChangeNotifier {
       }
 
       // 自动保存到历史
-      await _saveToHistory(content);
+      await _saveToHistory(content: content, industry: industry, outputType: template);
     } catch (e) {
       _errorMessage = '生成失败: $e';
     } finally {
@@ -188,7 +189,11 @@ class AfterMeetProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _saveToHistory(String input) async {
+  Future<void> _saveToHistory({
+    required String content,
+    required String industry,
+    required String outputType,
+  }) async {
     if (_result == null || _result!.isEmpty) return;
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -197,7 +202,7 @@ class AfterMeetProvider extends ChangeNotifier {
         userId: user.id,
         email: user.email ?? '',
         result: _result!,
-        input: input,
+        input: jsonEncode({'Content': content, 'Industry': industry, 'Output_type': outputType}),
       );
       await _historyProvider?.refresh();
     } catch (e) {

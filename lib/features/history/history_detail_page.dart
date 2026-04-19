@@ -117,10 +117,12 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
                     icon: const Icon(Icons.more_horiz_rounded, size: 20, color: Color(0xFF91918E)),
                     onSelected: (action) {
                       if (action == 'rename') _showRenameDialog(context);
+                      if (action == 'ai_title') _generateTitle(context);
                       if (action == 'delete') _showDeleteDialog(context);
                     },
                     itemBuilder: (_) => [
                       const PopupMenuItem(value: 'rename', child: Text('修改标题')),
+                      const PopupMenuItem(value: 'ai_title', child: Text('AI 生成标题')),
                       const PopupMenuItem(
                         value: 'delete',
                         child: Text('删除', style: TextStyle(color: AppColors.recording)),
@@ -315,6 +317,17 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _generateTitle(BuildContext context) async {
+    _showSnackBar('正在生成标题...');
+    final title = await context.read<HistoryProvider>().generateTitle(widget.item.id);
+    if (!context.mounted) return;
+    if (title != null && title.isNotEmpty) {
+      _showSnackBar('标题已更新');
+    } else {
+      _showSnackBar('生成失败');
+    }
   }
 
   void _showRenameDialog(BuildContext context) {

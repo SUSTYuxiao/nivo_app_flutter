@@ -6,6 +6,7 @@ import '../../core/constants.dart';
 import '../../shared/widgets/industry_template_dialog.dart';
 import '../../shared/widgets/nivo_button.dart';
 import '../../shared/widgets/processing_view.dart';
+import '../../shared/widgets/result_toolbar.dart';
 import '../settings/settings_provider.dart';
 import 'after_meet_provider.dart';
 import 'recordings_list_page.dart';
@@ -63,6 +64,17 @@ class _IdleView extends StatelessWidget {
                 '选择录音开始会后整理',
                 style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
               ),
+              if (provider.errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    provider.errorMessage!,
+                    style: const TextStyle(color: AppColors.recording, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
               const SizedBox(height: 40),
               NivoButton(
                 label: '开始整理',
@@ -274,12 +286,20 @@ class _InputSheetState extends State<_InputSheet> {
   }
 }
 
-class _ResultView extends StatelessWidget {
+class _ResultView extends StatefulWidget {
   final AfterMeetProvider provider;
   const _ResultView({required this.provider});
 
   @override
+  State<_ResultView> createState() => _ResultViewState();
+}
+
+class _ResultViewState extends State<_ResultView> {
+  final _screenshotKey = GlobalKey();
+
+  @override
   Widget build(BuildContext context) {
+    final content = widget.provider.result ?? '';
     return Column(
       children: [
         Padding(
@@ -291,7 +311,7 @@ class _ResultView extends StatelessWidget {
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
               ),
               GestureDetector(
-                onTap: provider.reset,
+                onTap: widget.provider.reset,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -305,17 +325,30 @@ class _ResultView extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ResultToolbar(
+            content: content,
+            title: '整理结果',
+            screenshotKey: _screenshotKey,
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Markdown(
-              data: provider.result ?? '',
-              padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: RepaintBoundary(
+              key: _screenshotKey,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: MarkdownBody(data: content),
+              ),
             ),
           ),
         ),

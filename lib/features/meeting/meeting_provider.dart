@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/models/transcription.dart';
@@ -292,7 +293,7 @@ class MeetingProvider extends ChangeNotifier {
       }
 
       // 自动保存到历史
-      await _saveToHistory(content);
+      await _saveToHistory(content: content, industry: industry, outputType: template);
     } catch (e) {
       _errorMessage = '纪要生成失败: $e';
     } finally {
@@ -334,7 +335,11 @@ class MeetingProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _saveToHistory(String input) async {
+  Future<void> _saveToHistory({
+    required String content,
+    required String industry,
+    required String outputType,
+  }) async {
     if (_meetingResult == null || _meetingResult!.isEmpty) return;
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -343,7 +348,7 @@ class MeetingProvider extends ChangeNotifier {
         userId: user.id,
         email: user.email ?? '',
         result: _meetingResult!,
-        input: input,
+        input: jsonEncode({'Content': content, 'Industry': industry, 'Output_type': outputType}),
       );
       await _historyProvider?.refresh();
     } catch (e) {
