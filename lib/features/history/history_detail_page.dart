@@ -1,18 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants.dart';
 import '../../core/models/history_item.dart';
+import '../../shared/widgets/result_toolbar.dart';
 import 'history_provider.dart';
 
 class HistoryDetailPage extends StatefulWidget {
@@ -25,7 +20,6 @@ class HistoryDetailPage extends StatefulWidget {
 
 class _HistoryDetailPageState extends State<HistoryDetailPage> {
   final _screenshotKey = GlobalKey();
-  bool _isExporting = false;
 
   String get _title =>
       widget.item.title.isNotEmpty ? widget.item.title : '未命名会议';
@@ -41,55 +35,6 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
 
   String get _dateStr => DateFormat('yyyy年M月d日 HH:mm')
       .format(DateTime.fromMillisecondsSinceEpoch(widget.item.createTime));
-
-  void _copyContent() {
-    if (_content.isEmpty) {
-      _showSnackBar('内容为空');
-      return;
-    }
-    Clipboard.setData(ClipboardData(text: _content));
-    _showSnackBar('已复制到剪贴板');
-  }
-
-  Future<void> _shareContent() async {
-    if (_content.isEmpty) {
-      _showSnackBar('内容为空');
-      return;
-    }
-    await SharePlus.instance.share(
-      ShareParams(text: '$_title\n\n$_content'),
-    );
-  }
-
-  Future<void> _exportImage() async {
-    if (_content.isEmpty) {
-      _showSnackBar('内容为空');
-      return;
-    }
-    setState(() => _isExporting = true);
-    try {
-      final boundary = _screenshotKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) return;
-
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-
-      final bytes = byteData.buffer.asUint8List();
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/nivo_meeting_${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(bytes);
-
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)]),
-      );
-    } catch (e) {
-      _showSnackBar('导出失败');
-    } finally {
-      setState(() => _isExporting = false);
-    }
-  }
 
   void _showSnackBar(String msg) {
     ScaffoldMessenger.of(context)
@@ -187,30 +132,12 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
             const SizedBox(height: 12),
 
             // 工具栏
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: Color(0xFFE9E9E7))),
-              ),
-              child: Row(
-                children: [
-                  _ToolButton(
-                    icon: Icons.copy_rounded,
-                    label: '复制',
-                    onTap: _copyContent,
-                  ),
-                  _ToolButton(
-                    icon: Icons.ios_share_rounded,
-                    label: '分享',
-                    onTap: _shareContent,
-                  ),
-                  _ToolButton(
-                    icon: Icons.image_outlined,
-                    label: _isExporting ? '导出中...' : '导出图片',
-                    onTap: _isExporting ? null : _exportImage,
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ResultToolbar(
+                content: _content,
+                title: _title,
+                screenshotKey: _screenshotKey,
               ),
             ),
 
@@ -372,36 +299,6 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
             child: const Text('删除', style: TextStyle(color: AppColors.recording)),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ToolButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  const _ToolButton({required this.icon, required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Opacity(
-        opacity: onTap == null ? 0.5 : 1.0,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15, color: const Color(0xFF73726E)),
-              const SizedBox(width: 5),
-              Text(label,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF73726E))),
-            ],
-          ),
-        ),
       ),
     );
   }

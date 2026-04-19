@@ -144,12 +144,14 @@ class ApiService {
     );
 
     final stream = response.data.stream as Stream<List<int>>;
-    String buffer = '';
+    final buffer = StringBuffer();
 
     await for (final chunk in stream) {
-      buffer += utf8.decode(chunk);
-      final lines = buffer.split('\n');
-      buffer = lines.removeLast(); // keep incomplete line in buffer
+      buffer.write(utf8.decode(chunk));
+      final content = buffer.toString();
+      final lines = content.split('\n');
+      buffer.clear();
+      buffer.write(lines.removeLast()); // keep incomplete line in buffer
 
       for (final line in lines) {
         // Coze SSE: event: Done 表示流结束
@@ -183,8 +185,9 @@ class ApiService {
       }
     }
     // flush remaining buffer
-    if (buffer.startsWith('data:')) {
-      final data = buffer.substring(5).trim();
+    final remaining = buffer.toString();
+    if (remaining.startsWith('data:')) {
+      final data = remaining.substring(5).trim();
       if (data.isNotEmpty && data != '[DONE]') {
         yield data;
       }

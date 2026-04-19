@@ -102,6 +102,7 @@ void main() async {
     MultiProvider(
       providers: [
         Provider<ApiService>.value(value: apiService),
+        Provider<AudioService>.value(value: audioService),
         ChangeNotifierProvider.value(value: settingsProvider),
         ChangeNotifierProvider.value(value: vipProvider),
         ChangeNotifierProvider.value(value: loginProvider),

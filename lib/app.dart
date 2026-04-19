@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:record/record.dart';
 import 'core/services/api_service.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/audio_service.dart';
 import 'core/services/vip_provider.dart';
 import 'core/theme.dart';
 import 'features/login/login_page.dart';
@@ -118,15 +118,8 @@ class _MainShellState extends State<_MainShell> with WidgetsBindingObserver {
     super.initState();
     _meetingProvider = context.read<MeetingProvider>();
     WidgetsBinding.instance.addObserver(this);
-    final user = widget.authService.currentUser;
-    if (user != null) {
-      context.read<HistoryProvider>().init(
-            apiService: widget.apiService,
-            userId: user.id,
-          );
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AudioRecorder().hasPermission();
+      context.read<AudioService>().hasPermission();
     });
   }
 

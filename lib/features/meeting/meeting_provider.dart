@@ -274,14 +274,23 @@ class MeetingProvider extends ChangeNotifier {
         _meetingResult = '';
         _phase = MeetingPhase.result;
         notifyListeners();
+        final sb = StringBuffer();
+        var lastNotify = DateTime.now();
         await for (final chunk in _apiService!.chatRunStream(
           content: content,
           industry: industry,
           outputType: template,
         )) {
-          _meetingResult = (_meetingResult ?? '') + chunk;
-          notifyListeners();
+          sb.write(chunk);
+          final now = DateTime.now();
+          if (now.difference(lastNotify).inMilliseconds >= 100) {
+            _meetingResult = sb.toString();
+            lastNotify = now;
+            notifyListeners();
+          }
         }
+        _meetingResult = sb.toString();
+        notifyListeners();
       } else {
         final result = await _apiService!.chatRun(
           content: content,

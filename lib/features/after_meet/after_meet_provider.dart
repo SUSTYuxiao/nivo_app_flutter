@@ -151,14 +151,23 @@ class AfterMeetProvider extends ChangeNotifier {
       if (useStreaming) {
         _result = '';
         notifyListeners();
+        final sb = StringBuffer();
+        var lastNotify = DateTime.now();
         await for (final chunk in _apiService!.chatRunStream(
           content: content,
           industry: industry,
           outputType: template,
         )) {
-          _result = (_result ?? '') + chunk;
-          notifyListeners();
+          sb.write(chunk);
+          final now = DateTime.now();
+          if (now.difference(lastNotify).inMilliseconds >= 100) {
+            _result = sb.toString();
+            lastNotify = now;
+            notifyListeners();
+          }
         }
+        _result = sb.toString();
+        notifyListeners();
       } else {
         final result = await _apiService!.chatRun(
           content: content,
