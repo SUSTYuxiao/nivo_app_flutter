@@ -105,7 +105,7 @@
 |------|------|
 | `content` / `data` / `text` | 纪要文本片段（增量） |
 
-流结束标志: `data: [DONE]`
+流结束标志: `event: Done`（SSE event 行）或 data 内 `{"event":"Done",...}`
 
 ### 文件上传
 
@@ -151,6 +151,12 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST (form) | `/api/pay/getVipExpire` | 查询 VIP 状态，body: `{userId}`，返回 `{productName, expireTime, ...}` |
+
+### AI 辅助
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/db/generateTitle?historyId={id}` | AI 生成历史记录标题，返回标题字符串 |
 
 ---
 
