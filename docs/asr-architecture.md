@@ -348,6 +348,55 @@ reset()
 
 > reset 必须停止录音和 ASR，否则下次 startMeeting 会出现残留状态。
 
+### 后台行为与灵动岛
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    录音中 → 用户锁屏/回桌面                    │
+│                                                              │
+│  Info.plist: UIBackgroundModes = [audio]                     │
+│  → 录音继续，ASR 继续，timer 继续                             │
+│  → 灵动岛/锁屏实况窗显示录音时长（系统 .timer 自动计时）       │
+│                                                              │
+│  后台超过 2 小时未回到前台:                                    │
+│  → _backgroundTimer 触发 → pauseTimer()                      │
+│  → 录音暂停，灵动岛显示"已暂停"                               │
+│  → 用户回到 app 后可手动恢复                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| 事件 | 行为 |
+|------|------|
+| 锁屏 / 回桌面 | 录音继续（background audio），启动 2h 倒计时 |
+| 2h 内回到前台 | 取消倒计时，正常继续 |
+| 超过 2h 未回前台 | 自动暂停录音 + ASR + 计费 |
+| endMeeting / reset | 结束灵动岛 |
+
+#### Live Activity 数据流
+
+```
+Flutter (MeetingProvider)              iOS Native (LiveActivityPlugin)
+  │                                          │
+  │  start(meetingId, elapsed=0)             │
+  │ ────────────────────────────────────────>│ Activity.request()
+  │                                          │ → 灵动岛 + 锁屏实况窗
+  │                                          │
+  │  update(isPaused: true, elapsed: N)      │
+  │ ────────────────────────────────────────>│ activity.update()
+  │                                          │ → 显示"已暂停"
+  │                                          │
+  │  update(isPaused: false, elapsed: N)     │
+  │ ────────────────────────────────────────>│ activity.update()
+  │                                          │ → 恢复 timer 显示
+  │                                          │
+  │  end()                                   │
+  │ ────────────────────────────────────────>│ activity.end(.immediate)
+  │                                          │ → 灵动岛消失
+```
+
+> Live Activity 要求 iOS 16.2+，低版本静默忽略。
+> timer 显示用 `Text(startTime, style: .timer)` 由系统渲染，不需要每秒 push。
+
 ---
 
 ## 五、iOS 平台特有细节

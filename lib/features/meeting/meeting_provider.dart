@@ -7,6 +7,7 @@ import '../../core/services/asr/asr_router.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/duration_service.dart';
 import '../../core/services/transcription_service.dart';
+import '../../core/services/live_activity_service.dart';
 import '../history/history_provider.dart';
 import '../settings/settings_provider.dart';
 
@@ -20,6 +21,7 @@ class MeetingProvider extends ChangeNotifier {
   TranscriptionService? _transcriptionService;
   SettingsProvider? _settingsProvider;
   HistoryProvider? _historyProvider;
+  LiveActivityService? _liveActivityService;
 
   MeetingPhase _phase = MeetingPhase.idle;
   final List<Transcription> _transcriptions = [];
@@ -36,6 +38,9 @@ class MeetingProvider extends ChangeNotifier {
   String _generatingStatus = '';
   /// Saved value to restore after meeting ends
   bool? _savedUseNivoTranscription;
+  /// 后台超时自动暂停（2小时）
+  DateTime? _backgroundEnteredAt;
+  static const _backgroundTimeout = Duration(hours: 2);
 
   MeetingPhase get phase => _phase;
   List<Transcription> get transcriptions => List.unmodifiable(_transcriptions);
@@ -48,6 +53,22 @@ class MeetingProvider extends ChangeNotifier {
   bool get globalCapture => _globalCapture;
   String get generatingStatus => _generatingStatus;
 
+  /// App 进入后台时调用
+  void onAppPaused() {
+    if (_phase != MeetingPhase.recording || _isPaused) return;
+    _backgroundEnteredAt = DateTime.now();
+  }
+
+  /// App 回到前台时调用
+  void onAppResumed() {
+    if (_backgroundEnteredAt == null) return;
+    final elapsed = DateTime.now().difference(_backgroundEnteredAt!);
+    _backgroundEnteredAt = null;
+    if (elapsed >= _backgroundTimeout && _phase == MeetingPhase.recording && !_isPaused) {
+      pauseTimer();
+    }
+  }
+
   void init({
     required AudioService audioService,
     required AsrRouter asrRouter,
@@ -56,6 +77,7 @@ class MeetingProvider extends ChangeNotifier {
     TranscriptionService? transcriptionService,
     SettingsProvider? settingsProvider,
     HistoryProvider? historyProvider,
+    LiveActivityService? liveActivityService,
   }) {
     _audioService = audioService;
     _asrRouter = asrRouter;
@@ -64,6 +86,7 @@ class MeetingProvider extends ChangeNotifier {
     _transcriptionService = transcriptionService;
     _settingsProvider = settingsProvider;
     _historyProvider = historyProvider;
+    _liveActivityService = liveActivityService;
   }
 
   void setUserId(String userId) {
@@ -108,6 +131,9 @@ class MeetingProvider extends ChangeNotifier {
       notifyListeners();
     });
 
+    // 启动灵动岛
+    _liveActivityService?.start(meetingId: _sessionId!, elapsedSeconds: 0);
+
     // Global capture: fetch duration config and start segment timing
     if (_globalCapture && _durationService != null && _userId != null) {
       await _durationService!.fetchConfig(_userId!);
@@ -117,6 +143,7 @@ class MeetingProvider extends ChangeNotifier {
         _timer = null;
         _phase = MeetingPhase.idle;
         _restoreUseNivoTranscription();
+        _liveActivityService?.end();
         notifyListeners();
         return;
       }
@@ -150,10 +177,12 @@ class MeetingProvider extends ChangeNotifier {
     if (_globalCapture && _durationService != null) {
       await _durationService!.stopSegment();
     }
+    await _audioService?.pauseRecording();
+    _liveActivityService?.update(isPaused: true, elapsedSeconds: _elapsed.inSeconds);
     notifyListeners();
   }
 
-  void resumeTimer() {
+  Future<void> resumeTimer() async {
     if (!_isPaused) return;
     _isPaused = false;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -163,6 +192,8 @@ class MeetingProvider extends ChangeNotifier {
     if (_globalCapture && _durationService != null) {
       _durationService!.startSegment(onLimitReached: _onDurationLimitReached);
     }
+    await _audioService?.resumeRecording();
+    _liveActivityService?.update(isPaused: false, elapsedSeconds: _elapsed.inSeconds);
     notifyListeners();
   }
 
@@ -175,6 +206,7 @@ class MeetingProvider extends ChangeNotifier {
     _timer = null;
     _phase = MeetingPhase.idle;
     _restoreUseNivoTranscription();
+    _liveActivityService?.end();
     notifyListeners();
   }
 
@@ -188,6 +220,8 @@ class MeetingProvider extends ChangeNotifier {
     required String industry,
     required String template,
   }) async {
+    if (_isGenerating) return; // guard against double call
+    _backgroundEnteredAt = null;
     _timer?.cancel();
     _timer = null;
 
@@ -197,6 +231,7 @@ class MeetingProvider extends ChangeNotifier {
 
     _lastRecordingPath = await _audioService?.stopRecording();
     await _asrRouter?.stopStream();
+    _liveActivityService?.end();
 
     _isGenerating = true;
     _generatingStatus = '正在转写...';
@@ -269,6 +304,7 @@ class MeetingProvider extends ChangeNotifier {
   }
 
   Future<void> reset() async {
+    _backgroundEnteredAt = null;
     _timer?.cancel();
     _timer = null;
     if (_globalCapture && _durationService != null) {
@@ -276,6 +312,7 @@ class MeetingProvider extends ChangeNotifier {
     }
     await _audioService?.stopRecording();
     await _asrRouter?.stopStream();
+    _liveActivityService?.end();
     _phase = MeetingPhase.idle;
     _transcriptions.clear();
     _meetingResult = null;

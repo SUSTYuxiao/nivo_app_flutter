@@ -10,6 +10,7 @@ import 'core/services/duration_service.dart';
 import 'core/services/oss_service.dart';
 import 'core/services/transcription_service.dart';
 import 'core/services/fluid_audio_service.dart';
+import 'core/services/live_activity_service.dart';
 import 'core/services/asr/cloud_asr.dart';
 import 'core/services/asr/sherpa_asr.dart';
 import 'core/services/asr/asr_router.dart';
@@ -70,6 +71,8 @@ void main() async {
     vipProvider.fetchVipStatus(user.id);
   }
 
+  final liveActivityService = LiveActivityService();
+
   final meetingProvider = MeetingProvider()
     ..init(
       audioService: audioService,
@@ -79,6 +82,7 @@ void main() async {
       transcriptionService: transcriptionService,
       settingsProvider: settingsProvider,
       historyProvider: historyProvider,
+      liveActivityService: liveActivityService,
     );
 
   if (user != null) {

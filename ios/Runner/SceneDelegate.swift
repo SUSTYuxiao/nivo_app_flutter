@@ -4,6 +4,7 @@ import UIKit
 class SceneDelegate: FlutterSceneDelegate {
     private let nativeAsrPlugin = NativeAsrPlugin()
     private let fluidAudioPlugin = FluidAudioPlugin()
+    private let liveActivityPlugin = LiveActivityPlugin()
 
     override func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         super.scene(scene, willConnectTo: session, options: connectionOptions)
@@ -13,6 +14,7 @@ class SceneDelegate: FlutterSceneDelegate {
             let messenger = controller.engine.binaryMessenger
             nativeAsrPlugin.register(with: messenger)
             fluidAudioPlugin.register(with: messenger)
+            liveActivityPlugin.register(with: messenger)
         }
     }
 }

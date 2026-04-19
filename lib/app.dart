@@ -109,12 +109,15 @@ class _MainShell extends StatefulWidget {
   State<_MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<_MainShell> {
+class _MainShellState extends State<_MainShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  late final MeetingProvider _meetingProvider;
 
   @override
   void initState() {
     super.initState();
+    _meetingProvider = context.read<MeetingProvider>();
+    WidgetsBinding.instance.addObserver(this);
     final user = widget.authService.currentUser;
     if (user != null) {
       context.read<HistoryProvider>().init(
@@ -125,6 +128,21 @@ class _MainShellState extends State<_MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AudioRecorder().hasPermission();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _meetingProvider.onAppPaused();
+    } else if (state == AppLifecycleState.resumed) {
+      _meetingProvider.onAppResumed();
+    }
   }
 
   @override

@@ -8,6 +8,7 @@ class AudioService {
   final AudioRecorder _recorder = AudioRecorder();
   StreamSubscription<List<int>>? _streamSub;
   bool _isRecording = false;
+  bool _isPaused = false;
   String? _currentFilePath;
   IOSink? _fileSink;
   int _bytesWritten = 0;
@@ -15,6 +16,7 @@ class AudioService {
   static String? _recordingsDirPath;
 
   bool get isRecording => _isRecording;
+  bool get isPaused => _isPaused;
   String? get currentFilePath => _currentFilePath;
 
   Future<bool> hasPermission() => _recorder.hasPermission();
@@ -78,12 +80,25 @@ class AudioService {
     });
   }
 
+  Future<void> pauseRecording() async {
+    if (!_isRecording || _isPaused) return;
+    await _recorder.pause();
+    _isPaused = true;
+  }
+
+  Future<void> resumeRecording() async {
+    if (!_isRecording || !_isPaused) return;
+    await _recorder.resume();
+    _isPaused = false;
+  }
+
   Future<String?> stopRecording() async {
     if (!_isRecording) return null;
     await _streamSub?.cancel();
     _streamSub = null;
     await _recorder.stop();
     _isRecording = false;
+    _isPaused = false;
 
     await _fileSink?.flush();
     await _fileSink?.close();
