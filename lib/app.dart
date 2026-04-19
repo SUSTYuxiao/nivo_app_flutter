@@ -70,10 +70,7 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (widget.authService.isLoggedIn) {
-      return _MainShell(
-        authService: widget.authService,
-        apiService: widget.apiService,
-      );
+      return const _MainShell();
     }
     return LoginPage(
       onLoginSuccess: () {
@@ -97,13 +94,7 @@ class _AuthGateState extends State<_AuthGate> {
 }
 
 class _MainShell extends StatefulWidget {
-  final AuthService authService;
-  final ApiService apiService;
-
-  const _MainShell({
-    required this.authService,
-    required this.apiService,
-  });
+  const _MainShell();
 
   @override
   State<_MainShell> createState() => _MainShellState();
