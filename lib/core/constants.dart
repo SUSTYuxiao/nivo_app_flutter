@@ -46,3 +46,15 @@ enum AsrMode { auto, local }
 
 /// 会后整理 / 结束会议时的转写方式
 enum TranscribeMode { cloud, local }
+
+/// 离线转写处理阶段
+enum ProcessingStage {
+  idle,
+  preparing,         // getStsToken / 文件准备
+  uploading,         // OSS 上传（有真实进度）
+  cloudTranscribing, // 服务端转写（假进度）
+  downloadingModel,  // 本地模型下载
+  localTranscribing, // 本地转写（假进度）
+  generating,        // LLM 生成纪要
+  error,
+}

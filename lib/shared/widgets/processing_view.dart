@@ -5,11 +5,13 @@ import '../../core/constants.dart';
 class ProcessingView extends StatefulWidget {
   final double progress;
   final String status;
+  final ProcessingStage stage;
 
   const ProcessingView({
     super.key,
     required this.progress,
     required this.status,
+    this.stage = ProcessingStage.idle,
   });
 
   @override
@@ -35,6 +37,18 @@ class _ProcessingViewState extends State<ProcessingView>
     super.dispose();
   }
 
+  /// 是否显示确定进度弧形（有真实或假进度的阶段）
+  bool get _showDeterminate {
+    switch (widget.stage) {
+      case ProcessingStage.uploading:
+      case ProcessingStage.cloudTranscribing:
+      case ProcessingStage.localTranscribing:
+        return widget.progress > 0;
+      default:
+        return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -49,7 +63,7 @@ class _ProcessingViewState extends State<ProcessingView>
               builder: (context, _) {
                 return CustomPaint(
                   painter: _RingPainter(
-                    progress: widget.progress,
+                    progress: _showDeterminate ? widget.progress : 0.0,
                     animValue: _ctrl.value,
                     color: AppColors.accent,
                   ),
@@ -70,7 +84,7 @@ class _ProcessingViewState extends State<ProcessingView>
               ),
             ),
           ),
-          if (widget.progress > 0 && widget.progress < 1.0) ...[
+          if (_showDeterminate && widget.progress > 0) ...[
             const SizedBox(height: 12),
             SizedBox(
               width: 160,
@@ -126,7 +140,7 @@ class _RingPainter extends CustomPainter {
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
-    if (progress > 0 && progress < 1.0) {
+    if (progress > 0) {
       // Determinate: show progress arc
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -148,33 +162,14 @@ class _RingPainter extends CustomPainter {
       );
     }
 
-    // Center icon
+    // Pulsing dot
     final iconPaint = Paint()..color = color;
-    final iconSize = radius * 0.5;
-
-    if (progress >= 1.0) {
-      // Checkmark for done
-      final path = Path()
-        ..moveTo(center.dx - iconSize * 0.4, center.dy)
-        ..lineTo(center.dx - iconSize * 0.1, center.dy + iconSize * 0.3)
-        ..lineTo(center.dx + iconSize * 0.4, center.dy - iconSize * 0.3);
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      );
-    } else {
-      // Pulsing dot
-      final dotRadius = 4.0 + sin(animValue * 2 * pi) * 1.5;
-      canvas.drawCircle(center, dotRadius, iconPaint);
-    }
+    final dotRadius = 4.0 + sin(animValue * 2 * pi) * 1.5;
+    canvas.drawCircle(center, dotRadius, iconPaint);
   }
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      old.progress != progress || old.animValue != animValue;
+      old.progress != progress ||
+      old.animValue != animValue;
 }

@@ -20,7 +20,7 @@ class AfterMeetPage extends StatelessWidget {
       body: SafeArea(
         child: Consumer<AfterMeetProvider>(
           builder: (context, provider, _) {
-            if (provider.result != null) {
+            if (provider.result != null && provider.result!.isNotEmpty) {
               return _ResultView(provider: provider);
             }
             if (provider.isGenerating) {
@@ -29,6 +29,7 @@ class AfterMeetPage extends StatelessWidget {
                 status: provider.progressStatus.isNotEmpty
                     ? provider.progressStatus
                     : '正在生成...',
+                stage: provider.stage,
               );
             }
             return _IdleView(provider: provider);
@@ -325,6 +326,35 @@ class _ResultViewState extends State<_ResultView> {
             ],
           ),
         ),
+        if (widget.provider.warningMessage != null) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.warning.withAlpha(60)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 16, color: AppColors.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.provider.warningMessage!,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.warning),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),

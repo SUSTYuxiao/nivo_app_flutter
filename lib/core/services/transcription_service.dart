@@ -44,7 +44,7 @@ class TranscriptionService {
     String localPath, {
     void Function(double progress, String status)? onProgress,
   }) async {
-    onProgress?.call(0.0, '上传中');
+    onProgress?.call(0.0, '准备上传...');
 
     final ossKey = await _ossService.uploadAudio(
       localPath,
