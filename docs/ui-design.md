@@ -27,6 +27,7 @@
 - 录音脉冲动画 + 计时器（HH:MM:SS，tabular figures）
 - "实时转录中"标签
 - 转录文本滚动列表（partial 灰色原地更新，final 黑色新增行）
+- final 段落显示相对时间戳（mm:ss，间隔 >= 5s 才显示，避免密集标注）
 - 空状态："等待语音输入..."
 - 底部控制：
   - 暂停/恢复按钮（暂停 = 停计时 + 停录音 + 停计费 + 灵动岛更新）
@@ -42,8 +43,7 @@
 - ResultToolbar（复制 / 分享 / 导出图片）
 - Markdown 渲染纪要（MarkdownBody + SingleChildScrollView）
 - "返回"按钮回到 idle
-- 纪要自动保存到历史
-
+- 纪要自动保存到历史 + 异步生成 AI 标题
 ### 灵动岛 / 锁屏实况窗（iOS 16.2+）
 - 录音开始 → 启动 Live Activity
 - 紧凑态：红点 + 计时器（系统 .timer 自动计时）
@@ -71,7 +71,8 @@
 - 错误消息红色显示（submit 失败后可见）
 
 ### RecordingsListPage（录音选择页）
-- 标题"选择录音" + 右上角"导入文件"按钮
+- 标题"选择录音" + 右上角"导入文件"按钮 + "语音备忘录"按钮
+- "语音备忘录"按钮点击弹出引导 modal（4 步操作指引，引导用户从语音备忘录分享到文件 App）
 - 两个分区：
   - "导入的文件"（外部导入，默认选中）
   - "本地录音"（InMeet 录音，可播放/删除/多选）
@@ -87,14 +88,23 @@
 - "提交整理"按钮 → 行业/模板选择 → 关闭 sheet → submit
 
 ### 生成中状态
-- ProcessingView（进度条 + 状态文字）
-- 状态流转：上传中 (i/n) → 等待服务器确认 → 转写中 (i/n) → 生成纪要中
+- ProcessingView（进度环 + 状态文字 + 线性进度条）
+- ProcessingStage 枚举驱动显示逻辑：
+  - preparing：indeterminate 旋转 + "准备上传..."
+  - uploading：determinate 弧形 + 真实百分比 + "上传中 (i/n)"
+  - cloudTranscribing：determinate 弧形 + 渐近假进度 + "服务器处理中..."
+  - downloadingModel：indeterminate 旋转 + "下载语音模型（仅首次）..."
+  - localTranscribing：determinate 弧形 + 假进度 + "本地转写中..."
+  - generating：indeterminate 旋转 + "生成纪要中..."
+- 假进度曲线：`progress = base + range × (1 - e^(-t/τ))`，永远不到 100%
+- 转写失败收集到列表，不中断流程
 
 ### Result 状态
 - 标题"整理结果" + "新整理"按钮
+- 部分转写失败时顶部显示橙色警告 banner（"X 转写失败，已跳过"）
 - ResultToolbar（复制 / 分享 / 导出图片）
 - Markdown 渲染结果
-- 纪要自动保存到历史
+- 纪要自动保存到历史 + 异步生成 AI 标题
 
 ---
 
@@ -133,7 +143,10 @@
 - InMeet 结束会议和 AfterMeet 提交都复用
 
 ### ProcessingView
-- 圆形进度指示器 + 状态文字
+- 圆形进度指示器 + 状态文字 + 线性进度条
+- 接受 `ProcessingStage` 参数，根据阶段决定显示模式：
+  - uploading / cloudTranscribing / localTranscribing → determinate 弧形 + 百分比
+  - preparing / downloadingModel / generating → indeterminate 旋转
 - 复用于 InMeet 生成中 / AfterMeet 生成中
 
 ---
@@ -143,15 +156,16 @@
 分组卡片风格：
 
 ### 个人信息
-- 头像（首字母圆形）+ 邮箱 + VIP 状态
-- 点击进入个人详情页（VIP 信息、用量）
+- 头像（首字母圆形）+ 邮箱 + VIP 状态（chip 样式：VIP 金色底 / 免费灰色底）
+- 点击进入个人详情页（VIP 信息、套餐一览）
+- 续费/升级按钮弹窗提示"开发中，请到 web 端操作"
 
 ### 退出登录
 
 ### 语音识别
-- 离线转写模式切换
-  - iOS：本地 / 云端（默认本地）
-  - Android：固定云端
+- "开启本地转写"开关（无额外文字标签）
+  - iOS：开/关（默认开启，即本地模式）
+  - Android：固定关闭（云端）
 - 本地模型下载状态（FluidAudio ~700MB）
 
 ### 关于
@@ -169,3 +183,4 @@
 - 纪要逐字流式显示（StringBuffer 累积，100ms 节流 notifyListeners）
 - 开发者模式可关闭流式，回退到非流式 `POST /api/chat/run`
 - 生成完成后自动保存到历史（input 包含完整 Content/Industry/Output_type JSON）
+- 保存后异步调用 `generateTitle` 生成 AI 标题（不阻塞主流程）
