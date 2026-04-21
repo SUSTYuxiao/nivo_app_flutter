@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants.dart';
+import '../../../core/models/transcription.dart';
 import '../../../shared/widgets/industry_template_dialog.dart';
 import '../../../shared/widgets/processing_view.dart';
 import '../meeting_provider.dart';
@@ -74,6 +75,24 @@ class RecordingPanel extends StatelessWidget {
     return '$h:$m:$s';
   }
 
+  String _formatElapsed(Duration d) {
+    final m = d.inMinutes.toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  /// 判断是否显示时间戳：第一条 final，或与上一条 final 间隔 >= 5秒
+  bool _shouldShowTimestamp(List<Transcription> transcriptions, int index) {
+    if (index == 0) return true;
+    // 找上一条 final
+    for (var i = index - 1; i >= 0; i--) {
+      if (transcriptions[i].isFinal) {
+        return (transcriptions[index].elapsed - transcriptions[i].elapsed).inSeconds >= 5;
+      }
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<MeetingProvider>(
@@ -124,16 +143,40 @@ class RecordingPanel extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final t = meeting.transcriptions[
                               meeting.transcriptions.length - 1 - index];
+                          // 判断是否需要显示时间戳：
+                          // 1. 是 final 段落
+                          // 2. 是第一条，或者与上一条 final 间隔 >= 5秒
+                          final realIndex = meeting.transcriptions.length - 1 - index;
+                          final showTimestamp = t.isFinal && _shouldShowTimestamp(
+                            meeting.transcriptions, realIndex);
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              t.text,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: t.isFinal
-                                    ? Colors.black87
-                                    : Colors.grey.shade600,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (showTimestamp)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      _formatElapsed(t.elapsed),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.accent.withAlpha(180),
+                                        fontWeight: FontWeight.w500,
+                                        fontFeatures: const [FontFeature.tabularFigures()],
+                                      ),
+                                    ),
+                                  ),
+                                Text(
+                                  t.text,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: t.isFinal
+                                        ? Colors.black87
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },

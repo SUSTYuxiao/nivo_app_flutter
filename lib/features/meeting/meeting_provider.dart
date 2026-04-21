@@ -100,12 +100,14 @@ class MeetingProvider extends ChangeNotifier {
         text: text,
         timestamp: DateTime.now(),
         isFinal: isFinal,
+        elapsed: _elapsed,
       );
     } else {
       _transcriptions.add(Transcription(
         text: text,
         timestamp: DateTime.now(),
         isFinal: isFinal,
+        elapsed: _elapsed,
       ));
     }
     notifyListeners();
