@@ -194,20 +194,25 @@ class ApiService {
     }
   }
 
-  /// 保存纪要到历史
-  Future<void> addHistory({
+  /// 保存纪要到历史，返回新记录 ID
+  Future<String?> addHistory({
     required String userId,
     required String email,
     required String result,
     String input = '',
   }) async {
-    await _dio.post('/db/addHistory',
+    final response = await _dio.post('/db/addHistory',
         data: FormData.fromMap({
           'userId': userId,
           'email': email,
           'result': jsonEncode({'default': result}),
           'input': input,
         }));
+    final body = response.data;
+    if (body is Map && (body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
+      return body['data']['id']?.toString();
+    }
+    return null;
   }
 
   Dio get dio => _dio;

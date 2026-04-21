@@ -82,6 +82,76 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
     }
   }
 
+  void _showVoiceMemoGuide(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('从语音备忘录导入',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 20),
+            _guideStep('1', '打开 iPhone 自带的「语音备忘录」App'),
+            const SizedBox(height: 12),
+            _guideStep('2', '长按要导入的录音，点击「分享」'),
+            const SizedBox(height: 12),
+            _guideStep('3', '选择「存储到"文件"」，保存到任意位置'),
+            const SizedBox(height: 12),
+            _guideStep('4', '回到本页面，点击「导入文件」选择刚保存的文件'),
+            const SizedBox(height: 24),
+            Text(
+              '语音备忘录不支持直接访问，需要先分享到「文件」App',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _guideStep(String number, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: AppColors.accent.withAlpha(25),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(number,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(text, style: const TextStyle(fontSize: 14, color: Color(0xFF37352F))),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _deleteRecording(String path, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -154,6 +224,26 @@ class _RecordingsListPageState extends State<RecordingsListPage> {
                           Icon(Icons.folder_open, size: 14, color: AppColors.accent),
                           SizedBox(width: 4),
                           Text('导入文件',
+                              style: TextStyle(fontSize: 12, color: AppColors.accent)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _showVoiceMemoGuide(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.mic_none, size: 14, color: AppColors.accent),
+                          SizedBox(width: 4),
+                          Text('语音备忘录',
                               style: TextStyle(fontSize: 12, color: AppColors.accent)),
                         ],
                       ),

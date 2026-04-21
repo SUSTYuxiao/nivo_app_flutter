@@ -355,13 +355,21 @@ class MeetingProvider extends ChangeNotifier {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
     try {
-      await _apiService!.addHistory(
+      final historyId = await _apiService!.addHistory(
         userId: user.id,
         email: user.email ?? '',
         result: _meetingResult!,
         input: jsonEncode({'Content': content, 'Industry': industry, 'Output_type': outputType}),
       );
       await _historyProvider?.refresh();
+      // 异步生成 AI 标题（不阻塞主流程）
+      if (historyId != null && historyId.isNotEmpty) {
+        _apiService!.generateTitle(historyId).then((title) {
+          if (title != null) _historyProvider?.refresh();
+        }).catchError((e) {
+          debugPrint('[MeetingProvider] generateTitle failed: $e');
+        });
+      }
     } catch (e) {
       debugPrint('[MeetingProvider] save history failed: $e');
     }

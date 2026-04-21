@@ -88,12 +88,20 @@ class _SettingsPageState extends State<SettingsPage> {
                                 const SizedBox(height: 2),
                                 Consumer<VipProvider>(
                                   builder: (context, vip, _) {
-                                    final label = vip.isFree ? '免费用户' : (vip.productName.isNotEmpty ? vip.productName : '会员');
-                                    return Text(label, style: TextStyle(
-                                      fontSize: 12,
-                                      color: vip.isFree ? const Color(0xFF91918E) : AppColors.accent,
-                                      fontWeight: vip.isFree ? FontWeight.normal : FontWeight.w500,
-                                    ));
+                                    final isFree = vip.isFree;
+                                    final label = isFree ? '免费用户' : (vip.productName.isNotEmpty ? vip.productName : '会员');
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isFree ? const Color(0xFFE0E0DE) : const Color(0xFFFFD700).withAlpha(40),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(label, style: TextStyle(
+                                        fontSize: 11,
+                                        color: isFree ? const Color(0xFF73726E) : const Color(0xFFFFD700),
+                                        fontWeight: FontWeight.w600,
+                                      )),
+                                    );
                                   },
                                 ),
                               ],
@@ -121,24 +129,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       children: [
                         _tileRow(
-                          label: '离线转写',
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                settings.transcribeMode == TranscribeMode.local ? '本地' : '云端',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                              ),
-                              const SizedBox(width: 8),
-                              Switch.adaptive(
-                                value: settings.transcribeMode == TranscribeMode.local,
-                                onChanged: (v) {
-                                  settings.setTranscribeMode(
-                                    v ? TranscribeMode.local : TranscribeMode.cloud,
-                                  );
-                                },
-                              ),
-                            ],
+                          label: '开启本地转写',
+                          trailing: Switch.adaptive(
+                            value: settings.transcribeMode == TranscribeMode.local,
+                            onChanged: (v) {
+                              settings.setTranscribeMode(
+                                v ? TranscribeMode.local : TranscribeMode.cloud,
+                              );
+                            },
                           ),
                         ),
                         if (settings.transcribeMode == TranscribeMode.local)
@@ -179,17 +177,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 if (!Platform.isIOS)
                   _card(
                     child: _tileRow(
-                      label: '离线转写',
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('云端', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                          const SizedBox(width: 8),
-                          Switch.adaptive(
-                            value: false,
-                            onChanged: null,
-                          ),
-                        ],
+                      label: '开启本地转写',
+                      trailing: Switch.adaptive(
+                        value: false,
+                        onChanged: null,
                       ),
                     ),
                   ),

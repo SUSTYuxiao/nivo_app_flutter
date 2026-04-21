@@ -136,3 +136,39 @@ String? _warningMessage;              // 部分失败警告
 12. iOS EventChannel 真实下载/转写进度
 13. 后端异步任务 + 轮询接口
 14. 后台处理 + 历史列表状态中心 + 完成通知
+
+## 附加改进
+
+### 语音备忘录导入引导
+
+iOS 语音备忘录不支持直接文件访问，需要用户手动分享到"文件"App。
+
+在录音选择页（`recordings_list_page.dart`）的"导入文件"按钮旁新增"语音备忘录"按钮，点击弹出引导 modal：
+
+1. 打开 iPhone 自带的「语音备忘录」App
+2. 长按要导入的录音，点击「分享」
+3. 选择「存储到"文件"」，保存到任意位置
+4. 回到本页面，点击「导入文件」选择刚保存的文件
+
+底部说明文字："语音备忘录不支持直接访问，需要先分享到「文件」App"
+
+### 自动生成 AI 标题
+
+对齐 Web 端行为：`addHistory` 成功后异步调用 `generateTitle(historyId)`。
+
+- `api_service.dart` 的 `addHistory` 改为返回新记录 ID
+- `after_meet_provider._saveToHistory` 和 `meeting_provider._saveToHistory` 保存后异步调 `generateTitle`
+- 不阻塞主流程，失败静默（仅 debugPrint）
+- 生成成功后刷新历史列表
+
+### 实时转写分段时间戳
+
+- `Transcription` 模型新增 `elapsed` 字段（相对会议开始时间）
+- 每个 final 段落显示时间戳（mm:ss 格式）
+- 智能显示：与上一条 final 间隔 >= 5 秒才显示，避免密集标注
+
+### 设置页 UX 调整
+
+- "离线转写" → "开启本地转写"，移除 Switch 旁的"云端"/"本地"文字
+- 会员标识风格对齐个人页（chip 样式，VIP 金色 / 免费灰色底）
+- 续费按钮改为弹窗提示"开发中，请到 web 端操作"

@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/constants.dart';
 import '../../core/services/vip_provider.dart';
-import 'charge_page.dart';
 
 class UserDetailPage extends StatefulWidget {
   const UserDetailPage({super.key});
@@ -126,7 +125,19 @@ class _UserDetailPageState extends State<UserDetailPage> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChargePage())),
+                                onPressed: () => showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('提示'),
+                                    content: const Text('开发中，请到 web 端操作'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('好的'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isFree ? AppColors.accent : const Color(0xFFFFD700),
                                   foregroundColor: isFree ? Colors.white : Colors.black,
