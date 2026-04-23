@@ -18,6 +18,11 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
     private var recognitionTask: SFSpeechRecognitionTask?
     private var isStreaming = false
     private var pcmFormat: AVAudioFormat?
+    /// Serial queue to protect recognitionRequest/Task access across threads.
+    /// recognitionTask callback runs on arbitrary queue; feedAudio runs on main thread.
+    private let asrQueue = DispatchQueue(label: "com.nivo.asr")
+    /// Whether to use on-device recognition (cached for restarts)
+    private var currentOnDevice = false
 
     func register(with messenger: FlutterBinaryMessenger) {
         methodChannel = FlutterMethodChannel(name: NativeAsrPlugin.channelName, binaryMessenger: messenger)
@@ -29,6 +34,41 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
         // Request speech recognition authorization on registration
         SFSpeechRecognizer.requestAuthorization { status in
             NSLog("[NativeAsr] authorization status: \(status.rawValue)")
+        }
+
+        // A2: Listen for AVAudioSession interruptions (phone calls, Siri, etc.)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        switch type {
+        case .began:
+            NSLog("[NativeAsr] audio session interrupted")
+        case .ended:
+            NSLog("[NativeAsr] audio session interruption ended")
+            // Reactivate audio session
+            do {
+                try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+            } catch {
+                NSLog("[NativeAsr] failed to reactivate audio session: \(error)")
+            }
+            // Restart recognition if we were streaming
+            asrQueue.async { [weak self] in
+                guard let self = self, self.isStreaming else { return }
+                NSLog("[NativeAsr] restarting recognition after interruption")
+                self.restartRecognitionTask()
+            }
+        @unknown default:
+            break
         }
     }
 
@@ -65,9 +105,9 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
 
     private func startRecognition(onDevice: Bool, result: @escaping FlutterResult) {
         NSLog("[NativeAsr] startRecognition called, onDevice=\(onDevice)")
+        currentOnDevice = onDevice
 
         // Ensure audio session is configured — unified .playAndRecord + .default
-        // Voice processing is controlled at AVAudioEngine inputNode level, not session level
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .default,
@@ -91,15 +131,24 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
             return
         }
 
-        // Stop any existing task
-        stopRecognition()
+        asrQueue.sync {
+            // Stop any existing task
+            recognitionRequest?.endAudio()
+            recognitionTask?.finish()
+            recognitionTask = nil
+            recognitionRequest = nil
 
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let request = recognitionRequest else {
-            result(FlutterError(code: "REQUEST_FAILED", message: "无法创建识别请求", details: nil))
-            return
+            startRecognitionTask(recognizer: recognizer, onDevice: onDevice)
+            isStreaming = true
         }
 
+        NSLog("[NativeAsr] streaming started, eventSink=\(self.eventSink != nil)")
+        result(nil)
+    }
+
+    /// Create a new recognition request + task. Must be called on asrQueue.
+    private func startRecognitionTask(recognizer: SFSpeechRecognizer, onDevice: Bool) {
+        let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
 
         if onDevice {
@@ -108,69 +157,95 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
             }
         }
 
+        recognitionRequest = request
+
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] speechResult, error in
             guard let self = self else { return }
+            // Guard: ignore callbacks from stale tasks (after restart replaced them)
+            guard self.recognitionRequest === request else { return }
 
             if let speechResult = speechResult {
                 let text = speechResult.bestTranscription.formattedString
                 let isFinal = speechResult.isFinal
                 NSLog("[NativeAsr] result: '\(text.prefix(50))...' isFinal=\(isFinal)")
-                self.eventSink?([
-                    "text": text,
-                    "isFinal": isFinal
-                ])
+                DispatchQueue.main.async {
+                    self.eventSink?([
+                        "text": text,
+                        "isFinal": isFinal
+                    ])
+                }
             }
 
             if let error = error {
-                NSLog("[NativeAsr] error: \(error.localizedDescription)")
-                // Don't stop on transient errors, only on final
+                NSLog("[NativeAsr] recognition error: \(error.localizedDescription)")
             }
 
-            // Only stop if the task itself reports final (system decided to end)
+            // A1: isFinal → auto-restart instead of stop
             if speechResult?.isFinal == true {
-                NSLog("[NativeAsr] final result received, stopping")
-                self.stopRecognition()
+                self.asrQueue.async {
+                    guard self.isStreaming, self.recognitionRequest === request else { return }
+                    NSLog("[NativeAsr] isFinal received, auto-restarting recognition task")
+                    self.restartRecognitionTask()
+                }
             }
         }
-
-        isStreaming = true
-        NSLog("[NativeAsr] streaming started, eventSink=\(self.eventSink != nil)")
-        result(nil)
     }
 
-    /// Feed PCM 16-bit 16kHz mono data from record package.
-    private func feedAudio(pcmData: Data) {
-        guard isStreaming, let request = recognitionRequest else { return }
-
-        let sampleRate: Double = 16000
-        let channels: UInt32 = 1
-
-        // Cache format to avoid allocating on every chunk
-        if pcmFormat == nil {
-            pcmFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: true)
-        }
-        guard let format = pcmFormat else { return }
-
-        let frameCount = UInt32(pcmData.count) / (channels * 2)
-        guard frameCount > 0 else { return }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { return }
-        buffer.frameLength = frameCount
-
-        pcmData.withUnsafeBytes { rawPtr in
-            if let baseAddress = rawPtr.baseAddress {
-                memcpy(buffer.int16ChannelData![0], baseAddress, pcmData.count)
-            }
-        }
-
-        request.append(buffer)
-    }
-
-    private func stopRecognition() {
+    /// Restart recognition task transparently. Must be called on asrQueue.
+    private func restartRecognitionTask() {
+        // End old request/task
         recognitionRequest?.endAudio()
         recognitionTask?.finish()
         recognitionTask = nil
         recognitionRequest = nil
-        isStreaming = false
+
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            NSLog("[NativeAsr] recognizer unavailable during restart, stopping")
+            isStreaming = false
+            return
+        }
+
+        startRecognitionTask(recognizer: recognizer, onDevice: currentOnDevice)
+        NSLog("[NativeAsr] recognition task restarted")
+    }
+
+    /// Feed PCM 16-bit 16kHz mono data from record package.
+    private func feedAudio(pcmData: Data) {
+        asrQueue.async { [weak self] in
+            guard let self = self, self.isStreaming, let request = self.recognitionRequest else { return }
+
+            let sampleRate: Double = 16000
+            let channels: UInt32 = 1
+
+            // Cache format to avoid allocating on every chunk
+            if self.pcmFormat == nil {
+                self.pcmFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: true)
+            }
+            guard let format = self.pcmFormat else { return }
+
+            let frameCount = UInt32(pcmData.count) / (channels * 2)
+            guard frameCount > 0 else { return }
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { return }
+            buffer.frameLength = frameCount
+
+            pcmData.withUnsafeBytes { rawPtr in
+                if let baseAddress = rawPtr.baseAddress {
+                    memcpy(buffer.int16ChannelData![0], baseAddress, pcmData.count)
+                }
+            }
+
+            request.append(buffer)
+        }
+    }
+
+    private func stopRecognition() {
+        asrQueue.sync {
+            recognitionRequest?.endAudio()
+            recognitionTask?.finish()
+            recognitionTask = nil
+            recognitionRequest = nil
+            isStreaming = false
+        }
         NSLog("[NativeAsr] stopped")
     }
 
@@ -233,7 +308,9 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
                 hasReturned = true
                 let text = speechResult.bestTranscription.formattedString
                 NSLog("[NativeAsr] transcribeFile result (\(text.count) chars): \(text.prefix(100))...")
-                result(text)
+                DispatchQueue.main.async {
+                    result(text)
+                }
                 if let url = cleanupURL { try? FileManager.default.removeItem(at: url) }
                 return
             }
@@ -266,7 +343,9 @@ class NativeAsrPlugin: NSObject, FlutterStreamHandler {
                         }
                     }
                 } else {
-                    result(FlutterError(code: "TRANSCRIBE_ERROR", message: error.localizedDescription, details: nil))
+                    DispatchQueue.main.async {
+                        result(FlutterError(code: "TRANSCRIBE_ERROR", message: error.localizedDescription, details: nil))
+                    }
                     if let url = cleanupURL { try? FileManager.default.removeItem(at: url) }
                 }
                 return

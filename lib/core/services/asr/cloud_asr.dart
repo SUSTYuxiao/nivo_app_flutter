@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../constants.dart';
 import 'asr_backend.dart';
 
@@ -53,19 +53,26 @@ class CloudAsr implements AsrBackend {
           currentEvent = null;
         }
       },
-      onError: (Object e) => onError(e.toString()),
+      onError: (Object e) {
+        debugPrint('[CloudAsr] SSE stream error: $e');
+        onError(e.toString());
+      },
     );
   }
 
   @override
   Future<void> sendAudio(Uint8List pcmData) async {
     if (_sessionId == null) return;
-    await _dio.post(
-      '/api/speech/audio',
-      queryParameters: {'sessionId': _sessionId},
-      data: Stream.fromIterable([pcmData]),
-      options: Options(contentType: 'application/octet-stream'),
-    );
+    try {
+      await _dio.post(
+        '/api/speech/audio',
+        queryParameters: {'sessionId': _sessionId},
+        data: Stream.fromIterable([pcmData]),
+        options: Options(contentType: 'application/octet-stream'),
+      );
+    } catch (e) {
+      debugPrint('[CloudAsr] sendAudio failed: $e');
+    }
   }
 
   @override

@@ -139,6 +139,7 @@ class ApiService {
       },
       options: Options(
         responseType: ResponseType.stream,
+        receiveTimeout: const Duration(minutes: 5),
         headers: {'Accept': 'text/event-stream'},
       ),
     );

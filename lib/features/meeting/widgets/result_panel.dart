@@ -42,20 +42,49 @@ class _ResultPanelState extends State<ResultPanel> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: SingleChildScrollView(
-                  child: RepaintBoundary(
-                    key: _screenshotKey,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: MarkdownBody(data: content),
-                    ),
-                  ),
-                ),
+                child: (meeting.isGenerating && content.trim().isEmpty)
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text(
+                              'AI 正在生成纪要...',
+                              style: TextStyle(fontSize: 14, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      )
+                    : (!meeting.isGenerating && content.trim().isEmpty && meeting.errorMessage != null)
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                                const SizedBox(height: 16),
+                                Text(
+                                  meeting.errorMessage!,
+                                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            child: RepaintBoundary(
+                              key: _screenshotKey,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: MarkdownBody(data: content),
+                              ),
+                            ),
+                          ),
               ),
               const SizedBox(height: 16),
               Center(

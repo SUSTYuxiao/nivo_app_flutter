@@ -42,6 +42,8 @@ class MeetingProvider extends ChangeNotifier {
   /// 后台超时自动暂停（2小时）
   DateTime? _backgroundEnteredAt;
   static const _backgroundTimeout = Duration(hours: 2);
+  /// ASR 重建中标志，防止与 endMeeting 竞态
+  Future<void>? _rebuildFuture;
 
   MeetingPhase get phase => _phase;
   List<Transcription> get transcriptions => List.unmodifiable(_transcriptions);
@@ -58,15 +60,51 @@ class MeetingProvider extends ChangeNotifier {
   void onAppPaused() {
     if (_phase != MeetingPhase.recording || _isPaused) return;
     _backgroundEnteredAt = DateTime.now();
+    debugPrint('[MeetingProvider] onAppPaused at $_backgroundEnteredAt');
   }
 
   /// App 回到前台时调用
   void onAppResumed() {
     if (_backgroundEnteredAt == null) return;
-    final elapsed = DateTime.now().difference(_backgroundEnteredAt!);
+    final bg = DateTime.now().difference(_backgroundEnteredAt!);
     _backgroundEnteredAt = null;
-    if (elapsed >= _backgroundTimeout && _phase == MeetingPhase.recording && !_isPaused) {
+    debugPrint('[MeetingProvider] onAppResumed after ${bg.inSeconds}s');
+    if (bg >= _backgroundTimeout && _phase == MeetingPhase.recording && !_isPaused) {
       pauseTimer();
+      return;
+    }
+    // 前台恢复：重建 ASR 管线，确保转写正常
+    if (_phase == MeetingPhase.recording && !_isPaused) {
+      _rebuildFuture = _rebuildAsrStream();
+    }
+  }
+
+  /// 重建 ASR 流（stop + start），用于前台恢复后确保管线健康
+  Future<void> _rebuildAsrStream() async {
+    if (_asrRouter == null || _sessionId == null) return;
+    debugPrint('[MeetingProvider] rebuilding ASR stream');
+    try {
+      await _asrRouter!.stopStream();
+      // 检查：rebuild 期间如果会议已结束/暂停，不再 start
+      if (_phase != MeetingPhase.recording || _isPaused) return;
+      // 用新 sessionId，因为 stopStream 会结束服务端旧 session
+      _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+      await _asrRouter!.startStream(
+        sessionId: _sessionId!,
+        onTranscription: (text, isFinal) {
+          addTranscription(text, isFinal: isFinal);
+        },
+        onError: (error) {
+          debugPrint('[MeetingProvider] ASR error after rebuild: $error');
+          _errorMessage = error;
+          notifyListeners();
+        },
+      );
+      debugPrint('[MeetingProvider] ASR stream rebuilt with session $_sessionId');
+    } catch (e) {
+      debugPrint('[MeetingProvider] ASR rebuild failed: $e');
+    } finally {
+      _rebuildFuture = null;
     }
   }
 
@@ -224,6 +262,10 @@ class MeetingProvider extends ChangeNotifier {
     required String template,
   }) async {
     if (_isGenerating) return; // guard against double call
+    // 等待 ASR 重建完成，防止竞态泄漏
+    if (_rebuildFuture != null) {
+      await _rebuildFuture;
+    }
     _backgroundEnteredAt = null;
     _timer?.cancel();
     _timer = null;
@@ -274,24 +316,39 @@ class MeetingProvider extends ChangeNotifier {
 
       if (useStreaming) {
         _meetingResult = '';
-        _phase = MeetingPhase.result;
+        // 不在这里切 phase，等首字到达再切，避免白屏
         notifyListeners();
         final sb = StringBuffer();
         var lastNotify = DateTime.now();
+        bool firstChunk = true;
         await for (final chunk in _apiService!.chatRunStream(
           content: content,
           industry: industry,
           outputType: template,
         )) {
           sb.write(chunk);
-          final now = DateTime.now();
-          if (now.difference(lastNotify).inMilliseconds >= 100) {
+          if (firstChunk && sb.toString().trim().isNotEmpty) {
+            // 首字到达，切换到结果页，跳过节流
             _meetingResult = sb.toString();
-            lastNotify = now;
+            _phase = MeetingPhase.result;
+            firstChunk = false;
+            lastNotify = DateTime.now();
             notifyListeners();
+          } else {
+            final now = DateTime.now();
+            if (now.difference(lastNotify).inMilliseconds >= 100) {
+              _meetingResult = sb.toString();
+              lastNotify = now;
+              notifyListeners();
+            }
           }
         }
         _meetingResult = sb.toString();
+        if (firstChunk) {
+          // SSE 返回了空内容，仍需切换 phase
+          _phase = MeetingPhase.result;
+          _errorMessage = '服务端未返回任何内容';
+        }
         notifyListeners();
       } else {
         final result = await _apiService!.chatRun(
@@ -307,6 +364,7 @@ class MeetingProvider extends ChangeNotifier {
       await _saveToHistory(content: content, industry: industry, outputType: template);
     } catch (e) {
       _errorMessage = '纪要生成失败: $e';
+      _phase = MeetingPhase.result;
     } finally {
       _isGenerating = false;
       _generatingStatus = '';
