@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class AppColors {
   AppColors._();
@@ -43,6 +44,29 @@ enum ScenarioType {
 }
 
 enum AsrMode { auto, local }
+
+/// Notion 风格 Markdown 样式，纪要展示统一复用
+MarkdownStyleSheet nivoMarkdownStyle() => MarkdownStyleSheet(
+      p: const TextStyle(fontSize: 14, height: 1.7, color: Color(0xFF37352F)),
+      h1: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF37352F)),
+      h2: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF37352F)),
+      h3: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF37352F)),
+      listBullet: const TextStyle(fontSize: 14, color: Color(0xFF37352F)),
+      blockquoteDecoration: BoxDecoration(
+        border: const Border(left: BorderSide(color: Color(0xFFE9E9E7), width: 3)),
+        color: const Color(0xFFF7F7F5),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      codeblockDecoration: BoxDecoration(
+        color: const Color(0xFFF7F6F3),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      codeblockPadding: const EdgeInsets.all(12),
+      horizontalRuleDecoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFE9E9E7))),
+      ),
+    );
 
 /// 会后整理 / 结束会议时的转写方式
 enum TranscribeMode { cloud, local }

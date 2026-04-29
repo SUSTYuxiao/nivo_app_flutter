@@ -1,13 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants.dart';
 import '../../core/models/history_item.dart';
-import '../../shared/widgets/result_toolbar.dart';
+import '../../shared/widgets/minutes_card.dart';
 import 'history_provider.dart';
 
 class HistoryDetailPage extends StatefulWidget {
@@ -32,9 +30,6 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
     } catch (_) {}
     return widget.item.result;
   }
-
-  String get _dateStr => DateFormat('yyyy年M月d日 HH:mm')
-      .format(DateTime.fromMillisecondsSinceEpoch(widget.item.createTime));
 
   void _showSnackBar(String msg) {
     ScaffoldMessenger.of(context)
@@ -78,167 +73,15 @@ class _HistoryDetailPageState extends State<HistoryDetailPage> {
               ),
             ),
 
-            // 标题区
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.description_outlined, size: 18, color: Color(0xFF91918E)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _title,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF37352F),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 26, top: 4),
-                    child: Row(
-                      children: [
-                        Text(_dateStr,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF91918E))),
-                        if (widget.item.industry.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withAlpha(20),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              widget.item.industry,
-                              style: const TextStyle(fontSize: 11, color: AppColors.accent),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // 工具栏
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ResultToolbar(
-                content: _content,
+            // 纪要卡片
+            Expanded(
+              child: MinutesCard(
                 title: _title,
+                content: _content,
+                date: DateTime.fromMillisecondsSinceEpoch(widget.item.createTime),
+                industry: widget.item.industry,
                 screenshotKey: _screenshotKey,
               ),
-            ),
-
-            // 内容区
-            Expanded(
-              child: _content.isNotEmpty
-                  ? SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-                      child: RepaintBoundary(
-                        key: _screenshotKey,
-                        child: Container(
-                          color: Colors.white,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 截图时显示的头部
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black,
-                                      borderRadius: BorderRadius.circular(7),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: const Text('N',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 16)),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text('NivoWork',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF37352F),
-                                          letterSpacing: -0.3)),
-                                  const Spacer(),
-                                  Text(_dateStr,
-                                      style: const TextStyle(
-                                          fontSize: 11, color: Color(0xFF91918E))),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(_title,
-                                  style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF37352F))),
-                              const SizedBox(height: 16),
-                              MarkdownBody(
-                                data: _content,
-                                styleSheet: MarkdownStyleSheet(
-                                  p: const TextStyle(
-                                      fontSize: 14,
-                                      height: 1.7,
-                                      color: Color(0xFF37352F)),
-                                  h1: const TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF37352F)),
-                                  h2: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF37352F)),
-                                  h3: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF37352F)),
-                                  listBullet: const TextStyle(
-                                      fontSize: 14, color: Color(0xFF37352F)),
-                                  blockquoteDecoration: BoxDecoration(
-                                    border: const Border(
-                                        left: BorderSide(
-                                            color: Color(0xFFE9E9E7), width: 3)),
-                                    color: const Color(0xFFF7F7F5),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                  blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                                  codeblockDecoration: BoxDecoration(
-                                    color: const Color(0xFFF7F6F3),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  codeblockPadding: const EdgeInsets.all(12),
-                                  horizontalRuleDecoration: const BoxDecoration(
-                                    border: Border(
-                                        top: BorderSide(color: Color(0xFFE9E9E7))),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  : const Center(
-                      child: Text('暂无内容',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF91918E))),
-                    ),
             ),
           ],
         ),
