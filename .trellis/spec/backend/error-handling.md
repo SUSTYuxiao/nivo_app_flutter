@@ -8,7 +8,7 @@
 
 ### ApiService 层
 
-- 检查 `code == 200 || success == true`，不匹配则抛异常
+- 检查 `code == 200 && success == true`，不匹配则抛异常
 - 异常消息优先取 `body['message'] ?? body['msg'] ?? body['error'] ?? 'unknown error'`
 - Dio 异常由调用方 try-catch 处理
 

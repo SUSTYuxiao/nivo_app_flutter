@@ -19,7 +19,7 @@
 
 ```dart
 final body = response.data;
-if (body is Map && (body['code'] == 200 || body['success'] == true) && body['data'] is Map) {
+if (body is Map && (body['code'] == 200 && body['success'] == true) && body['data'] is Map) {
   final data = body['data'] as Map;
   // ...
 }
